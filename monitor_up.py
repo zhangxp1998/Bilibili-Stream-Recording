@@ -74,26 +74,49 @@ def merge_comments(history, new):
     history.extend(new[i:])
     return history
 
-def download_comments(room_id, save_path):
-    if save_path.endswith('.flv'):
-        save_path = save_path[0:-3] + 'json'
-    if not save_path.endswith('json'):
-        save_path += 'json'
+def write_ass_headers(save_path):
+    with open(save_path, 'w') as out:
+        out.write('[Script Info]\n')
+        out.write('Title: bilibili ASS Danmaku Downloader\n')
+        out.write('ScriptType: v4.00+\n')
+        out.write('Collisions: Normal')
+        out.write('PlayResX: 560\n')
+        out.write('PlayResY: 420\n')
+        out.write('Timer: 10.0000\n')
+        out.write('[V4+ Styles]\n')
+        out.write('Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n')
+        out.write('Style: Fix,Ariel,25,&H66FFFFFF,&H66FFFFFF,&H66000000,&H66000000,1,0,0,0,100,100,0,0,1,2,0,2,20,20,2,0\n')
+        out.write('Style: R2L,Ariel,25,&H66FFFFFF,&H66FFFFFF,&H66000000,&H66000000,1,0,0,0,100,100,0,0,1,2,0,2,20,20,2,0\n')
+        out.write('\n')
+        out.write('[Events]\n')
+        out.write('Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n')
 
+
+def append_more_history(save_path, history):
+    with open(save_path, 'w') as out:
+        for item in history:
+            out.write('Dialog:0,\n')
+
+
+def download_comments(room_id, save_path, start_time):
+    if save_path.endswith('.flv'):
+        save_path = save_path[0:-3] + 'ass'
+    if not save_path.endswith('ass'):
+        save_path += 'ass'
+
+    write_ass_headers(save_path)
     request_data = {'roomid': room_id}
     resp = requests.post('http://live.bilibili.com/ajax/msg', data=request_data)
     data = resp.json()
     history = []
-    last_len = 0
+
     while data['code'] == 0:
         comments = data['data']['room']
         merge_comments(history, comments)
         print(history)
-        if len(history) - last_len > 10:
-            last_len = len(history)
-            with open(save_path, 'wb') as out:
-                string = json.dumps(history, ensure_ascii=False, indent=4, sort_keys=True).encode('utf8')
-                out.write(string)
+        if len(history) > 10:
+            append_more_history(save_path, history)
+            history = []
 
         time.sleep(1)
         resp = requests.post('http://live.bilibili.com/ajax/msg', data=request_data)
