@@ -4,6 +4,7 @@ import asyncio
 import json
 import xml.dom.minidom
 from datetime import datetime
+from logging import debug, info
 from struct import *
 
 import requests
@@ -52,7 +53,6 @@ def get_chat_info(room_id):
         'User-Agent': 'Safari/537.36',
         'Accept-Encoding':'gzip, deflate, br'})
     text = resp.text
-    print(text)
     dom = xml.dom.minidom.parseString('<root>' + text + '</root>')
     root = dom.documentElement
     server = root.getElementsByTagName('dm_server')
@@ -80,7 +80,7 @@ class comment_downloader():
 
     async def connectServer(self):
         # self._roomId = get_true_roomid(self._roomId)
-        print('room_id: ' + str(self._roomId))
+        debug('room_id: ' + str(self._roomId))
         self._ChatHost, self._ChatPort = get_chat_info(self._roomId)
         
         reader, writer = await asyncio.open_connection(self._ChatHost, self._ChatPort)
@@ -88,10 +88,10 @@ class comment_downloader():
         self._writer = writer
         self._start_time = datetime.now()
         write_xml_header(self._save_path)
-        print ('connecting...')
+        info('connecting...')
         if await self.SendJoinChannel(self._roomId):
             self.connected = True
-            print ('Connected!')
+            info('Connected!')
             await self.ReceiveMessageLoop()
     
     def close(self):
@@ -142,7 +142,7 @@ class comment_downloader():
                 if num == 0 or num == 1 or num == 2:
                     tmp = await self._reader.read(4)
                     num3, = unpack('!I', tmp)
-                    print('房间人数为 %s' % num3)
+                    debug('房间人数为 %s' % num3)
                     self._UserCount = num3
                     continue
                 elif num == 3 or num == 4:
@@ -170,10 +170,10 @@ class comment_downloader():
             return
         cmd = dic['cmd']
         if cmd == 'LIVE':
-            print('直播开始。。。')
+            info('直播开始。。。')
             return
         if cmd == 'PREPARING':
-            print('房主准备中。。。')
+            info('房主准备中。。。')
             return
         if cmd == 'DANMU_MSG':
             commentText = dic['info'][1]
@@ -188,7 +188,7 @@ class comment_downloader():
                 delta = datetime.now() - self._start_time
                 dic['info'][0][0] = delta.total_seconds()
                 append_comment(self._save_path, dic)
-                print(commentUser + ': ' + commentText)
+                debug('%s: %s', commentUser, commentText)
             except:
                 pass
             return
@@ -198,14 +198,14 @@ class comment_downloader():
             Giftrcost = dic['data']['rcost']
             GiftNum = dic['data']['num']
             try:
-                print(GiftUser + ' 送出了 ' + str(GiftNum) + ' 个 ' + GiftName)
+                debug('%s 送出了 %d 个 %s', GiftUser, GiftNum, GiftName)
             except:
                 pass
             return
         if cmd == 'WELCOME' and self.TURN_WELCOME:
             commentUser = dic['data']['uname']
             try:
-                print ('欢迎 ' + commentUser + ' 进入房间。。。。')
+                info('欢迎 %s 进入房间。。。。', commentUser)
             except:
                 pass
             return

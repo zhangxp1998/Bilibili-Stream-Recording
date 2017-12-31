@@ -7,13 +7,14 @@ import sys
 import time
 from datetime import datetime
 from multiprocessing import Process
-from logging import debug, info, warning, error
+import logging
+from logging import debug, info, error
 import requests
 
 import google_drive
 from comment_downloader import download_comments
 
-REGEX = re.compile(r'https?://.*.bilibili.com/(\d+)')
+
 HEADERS = {
     'User-Agent': 'Safari/537.36',
     'Accept-Encoding':'gzip, deflate, br'
@@ -28,7 +29,7 @@ def extract_user_id(url):
         Returns:
             uid extracted from the url, in string
     """
-    global REGEX
+    REGEX = re.compile(r'https?://.*.bilibili.com/(\d+)')
     match = REGEX.match(url)
     return match.group(1)
 
@@ -39,7 +40,7 @@ def check_json_error(data):
             data (obj): an json object returned from request
     """
     if data['code'] != 0:
-        error('%d, %s', data['code']. data['msg'])
+        error('%d, %s', data['code'], data['msg'])
         raise Exception(data['msg'])
 
 def get_stream_info(user_id):
@@ -53,7 +54,7 @@ def get_stream_info(user_id):
     resp = requests.get('https://api.vc.bilibili.com/user_ex/v1/user/detail?uid=%s&room[]=live_status' % str(user_id), headers=HEADERS)
     data = resp.json()
     check_json_error(data)
-    return resp.json()['data']
+    return data['data']
 
 def is_user_streaming(stream_info):
     """
@@ -86,7 +87,7 @@ def sizeof_fmt(num, suffix='B'):
     Returns:
         string in human readable form with suitable unit
     """
-    for unit in ['','K','M','G','T','P','E','Z']:
+    for unit in ['', 'K', 'M', 'G', 'T', 'P', 'E', 'Z']:
         if abs(num) < 1024.0:
             return "%3.1f%s%s" % (num, unit, suffix)
         num /= 1024.0
@@ -97,18 +98,20 @@ def download_stream(download_url, stream_save_location):
     Download the URL
     Args:
         download_url: url to download
-    stream_save_location:
-        File path to save it, will be passed to open() 
+        
+        stream_save_location: File path to save it, will be passed to open()
+
+        LOG: logger
     """
     global HEADERS
     out_file = open(stream_save_location, 'wb')
     resp = requests.get(download_url, stream=True, headers=HEADERS)
-    sum = 0
+    file_len = 0
     for buf in resp.iter_content(128*1024):
         if buf:
             out_file.write(buf)
-            sum += len(buf)
-            info('%s: %s', stream_save_location, sizeof_fmt(sum))
+            file_len += len(buf)
+            info('%s: %s', stream_save_location, sizeof_fmt(file_len))
         else:
             raise Exception("Something's not right...")
     out_file.close()
@@ -140,34 +143,53 @@ def generate_save_path(info):
         os.makedirs(uid)
     return uid + "/" + datetime.now().strftime('%b %d %Y %H:%M')
 
-if __name__ == '__main__':
+def main():
     if len(sys.argv) < 2:
         sys.exit(0)
     while True:
         for url in sys.argv[1:]:
             space_id = extract_user_id(url)
-            info = get_stream_info(space_id)
-            if is_user_streaming(info):
-                all_download_urls = get_stream_download_urls(info)
+            stream_info = get_stream_info(space_id)
+            if is_user_streaming(stream_info):
+                all_download_urls = get_stream_download_urls(stream_info)
                 default_url = all_download_urls['durl'][0]['url']
-                save_path = generate_save_path(info)
+                save_path = generate_save_path(stream_info)
                 video_path = save_path + '.flv'
 
-                p = Process(target=download_stream, args=(default_url, video_path))
+                p = Process(
+                    name=video_path,
+                    target=download_stream, args=(default_url, video_path))
                 p.start()
 
                 comment_path = save_path + '.xml'
-                comment_worker = Process(target=download_comments, args=(info['room']['room_id'], comment_path))
+                comment_worker = Process(
+                    name=comment_path,
+                    target=download_comments, args=(stream_info['room']['room_id'], comment_path))
                 comment_worker.start()
                 p.join()
+
+                #if the stream ends, just kill the comment downloader
                 os.kill(comment_worker.pid, signal.SIGINT)
                 comment_worker.join()
-                # download_stream(default_url, save_path)
-                print('Start uploading ' + save_path)
-                p = Process(target=google_drive.upload_to_google_drive, args=(video_path,))
-                p.start()
-                p = Process(target=google_drive.upload_to_google_drive, args=(comment_path,))
-                p.start()
+
+                p1 = Process(
+                    name='Upload ' + comment_path,
+                    target=google_drive.upload_to_google_drive, args=(comment_path,))
+                p1.start()
+                info('PID: %d Start uploading %s', p1.pid, comment_path)
+
+                p2 = Process(
+                    name='Upload ' + video_path,
+                    target=google_drive.upload_to_google_drive, args=(video_path,))
+                p2.start()
+                info('PID: %d Start uploading %s', p2.pid, video_path)
+
+                p1.join()
+                p2.join()
             else:
-                print(get_user_name(space_id) + " is not streaming...")
+                info("%s is not streaming...", get_user_name(space_id))
                 time.sleep(3)
+
+if __name__ == '__main__':
+    logging.root.setLevel(logging.DEBUG)
+    main()
