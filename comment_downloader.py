@@ -2,20 +2,55 @@ from __future__ import print_function
 
 import asyncio
 import json
-import random
 import xml.dom.minidom
+from datetime import datetime
 from struct import *
 
 import requests
 
+def download_comments(room_id, save_path):
+    if save_path.endswith('.flv'):
+        save_path = save_path[:-3] + 'xml'
+    danmuji = comment_downloader(room_id, save_path)
+    tasks = [
+                danmuji.connectServer() ,
+                danmuji.HeartbeatLoop()
+            ]
+    loop = asyncio.get_event_loop()
+    try:
+        loop.run_until_complete(asyncio.wait(tasks))
+    except KeyboardInterrupt:
+        danmuji.close()
+        
+        for task in asyncio.Task.all_tasks():
+            task.cancel()
+        loop.run_forever()
 
-def get_true_roomid(short_room_id):
-    resp = requests.get('https://api.live.bilibili.com/room/v1/Room/room_init?id=' + str(short_room_id))
-    data = resp.json()
-    return data['data']['room_id']
+def write_xml_header(save_path):
+    with open(save_path, 'wb') as out_file:
+        out_file.write(b'<?xml version="1.0" encoding="UTF-8"?><i><chatserver>chat.bilibili.com</chatserver><chatid>0</chatid><mission>0</mission><maxlimit>0</maxlimit><source>k-v</source>\n')
+
+def append_comment(save_path, comment_json):
+    with open(save_path, 'a') as out_file:
+        #content of the comment
+        text = comment_json['info'][1]
+        #name of the user who sent this comment
+        user = comment_json['info'][2][1]
+        #meta info
+        payload = str(comment_json['info'][0])[1:-1]
+        out_file.write('<d p="' + payload + '">' + user + ': ' + text + '</d>\n')
+
+def write_xml_footer(save_path):
+    with open(save_path, 'ab') as out_file:
+        out_file.write(b'</i>\n')
 
 def get_chat_info(room_id):
-    resp = requests.get('http://live.bilibili.com/api/player?id=cid:' + str(room_id), headers={'Accept': '*/*'})
+    #room_id is the true room id obtained from 
+    #https://api.live.bilibili.com/room/v1/Room/room_init?id=
+    resp = requests.get('http://live.bilibili.com/api/player?id=cid:' + str(room_id), headers={
+        'Accept': '*/*',
+        'User-Agent': 'Safari/537.36',
+        'Accept-Encoding':'gzip, deflate, br'})
     text = resp.text
     print(text)
     dom = xml.dom.minidom.parseString('<root>' + text + '</root>')
@@ -24,8 +59,8 @@ def get_chat_info(room_id):
     port = root.getElementsByTagName('dm_port')
     return (server[0].firstChild.data, port[0].firstChild.data)
 
-class bilibiliClient():
-    def __init__(self, room_id):
+class comment_downloader():
+    def __init__(self, room_id, save_path = 'test.xml'):
         self._CIDInfoUrl = 'http://live.bilibili.com/api/player?id=cid:'
         self._roomId = 0
         self._ChatPort = 788
@@ -37,25 +72,32 @@ class bilibiliClient():
         self._ChatHost = 'livecmt-1.bilibili.com'
         self._roomId = room_id
         self._roomId = int(self._roomId)
+        self._save_path = save_path
+        self._start_time = datetime.now()
         self.TURN_WELCOME = True
         self.TURN_GIFT = True
 
 
-
     async def connectServer(self):
-        self._roomId = get_true_roomid(self._roomId)
+        # self._roomId = get_true_roomid(self._roomId)
         print('room_id: ' + str(self._roomId))
         self._ChatHost, self._ChatPort = get_chat_info(self._roomId)
         
         reader, writer = await asyncio.open_connection(self._ChatHost, self._ChatPort)
         self._reader = reader
         self._writer = writer
-        print ('链接弹幕中。。。。。')
-        if (await self.SendJoinChannel(self._roomId) == True):
+        self._start_time = datetime.now()
+        write_xml_header(self._save_path)
+        print ('connecting...')
+        if await self.SendJoinChannel(self._roomId):
             self.connected = True
-            print ('进入房间成功。。。。。')
-            print ('链接弹幕成功。。。。。')
+            print ('Connected!')
             await self.ReceiveMessageLoop()
+    
+    def close(self):
+        self.connected = False
+        self._writer.close()
+        write_xml_footer(self._save_path)
 
     async def HeartbeatLoop(self):
         while not self.connected:
@@ -120,7 +162,7 @@ class bilibiliClient():
                         tmp = await self._reader.read(num2)
                     else:
                         continue
-
+    
     def parseDanMu(self, messages):
         try:
             dic = json.loads(messages)
@@ -143,6 +185,9 @@ class bilibiliClient():
             if isVIP:
                 commentUser = 'VIP ' + commentUser
             try:
+                delta = datetime.now() - self._start_time
+                dic['info'][0][0] = delta.total_seconds()
+                append_comment(self._save_path, dic)
                 print(commentUser + ': ' + commentText)
             except:
                 pass

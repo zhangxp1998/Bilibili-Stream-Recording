@@ -1,16 +1,16 @@
 from __future__ import print_function
 
-from datetime import datetime
-import json
 import os
 import re
 import sys
 import time
+from datetime import datetime
 from multiprocessing import Process
 
 import requests
 
 import google_drive
+from comment_downloader import download_comments
 
 REGEX = re.compile(r'https?://.*.bilibili.com/(\d+)')
 HEADERS = {
@@ -108,10 +108,15 @@ if __name__ == '__main__':
                 print(save_path, default_url)
                 p = Process(target=download_stream, args=(default_url, save_path))
                 p.start()
+                comment_worker = Process(target=download_comments, args=(info['room']['room_id'], save_path))
+                comment_worker.start()
                 p.join()
+                comment_worker.join()
                 # download_stream(default_url, save_path)
                 print('Start uploading ' + save_path)
                 p = Process(target=google_drive.upload_to_google_drive, args=(save_path,))
+                p.start()
+                p = Process(target=google_drive.upload_to_google_drive, args=(save_path[-3] + 'xml',))
                 p.start()
             else:
                 print(get_user_name(space_id) + " is not streaming...")
