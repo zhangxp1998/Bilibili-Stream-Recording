@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 import os
-import signal
+import json
 import re
 import sys
 import time
@@ -146,7 +146,14 @@ def generate_save_path(stream_info):
     uid = str(stream_info['uid'])
     if not os.path.exists(uid):
         os.makedirs(uid)
-    return uid + "/" + datetime.now().strftime('%b %d %Y %H:%M')
+    return uid + "/" + datetime.now().strftime('%b %d %Y %H:%M:%S')
+
+def async_upload_delete(file_path):
+    p = Process(
+        name='Upload ' + file_path,
+        target=google_drive.upload_to_google_drive, args=(file_path, True))
+    p.start()
+    info('PID: %d Start uploading %s', p.pid, file_path)
 
 def main():
     if len(sys.argv) < 2:
@@ -160,8 +167,8 @@ def main():
                 default_url = all_download_urls['durl'][0]['url']
                 debug(default_url)
                 save_path = generate_save_path(stream_info)
-                video_path = save_path + '.flv'
 
+                video_path = save_path + '.flv'
                 p = Process(
                     name=video_path,
                     target=download_stream, args=(default_url, video_path))
@@ -174,23 +181,22 @@ def main():
                     target=download_comments, args=(stream_info['room']['room_id'], comment_path))
                 comment_worker.start()
                 debug('PID: %d NAME: %s', comment_worker.pid, comment_worker.name)
+
+                #save stream info and upload it
+                meta_info_path = save_path + '.json'
+                with open(meta_info_path, 'w') as outfile:
+                    json.dump(stream_info, outfile, indent=4, sort_keys=True, ensure_ascii=False)
+                async_upload_delete(meta_info_path)
+
+                #wait for stream to end
                 p.join()
 
                 #if the stream ends, just kill the comment downloader
                 comment_worker.terminate()
                 write_xml_footer(comment_path)
 
-                p1 = Process(
-                    name='Upload ' + comment_path,
-                    target=google_drive.upload_to_google_drive, args=(comment_path, True))
-                p1.start()
-                info('PID: %d Start uploading %s', p1.pid, comment_path)
-
-                p2 = Process(
-                    name='Upload ' + video_path,
-                    target=google_drive.upload_to_google_drive, args=(video_path, True))
-                p2.start()
-                info('PID: %d Start uploading %s', p2.pid, video_path)
+                async_upload_delete(comment_path)
+                async_upload_delete(video_path)
             else:
                 info("%s is not streaming...", get_user_name(space_id))
                 time.sleep(3)
