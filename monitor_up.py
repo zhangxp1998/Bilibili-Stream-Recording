@@ -98,7 +98,7 @@ def download_stream(download_url, stream_save_location):
     Download the URL
     Args:
         download_url: url to download
-        
+
         stream_save_location: File path to save it, will be passed to open()
 
         LOG: logger
@@ -111,7 +111,8 @@ def download_stream(download_url, stream_save_location):
         if buf:
             out_file.write(buf)
             file_len += len(buf)
-            info('%s: %s', stream_save_location, sizeof_fmt(file_len))
+            if(file_len & 0xFFFFF == 0):
+                info('%s: %s', stream_save_location, sizeof_fmt(file_len))
         else:
             raise Exception("Something's not right...")
     out_file.close()
@@ -130,7 +131,7 @@ def get_user_name(uid):
     check_json_error(data)
     return data['data']['uname']
 
-def generate_save_path(info):
+def generate_save_path(stream_info):
     '''
     generate a unique path for saving this stream
     Args:
@@ -138,7 +139,7 @@ def generate_save_path(info):
     Returns:
         a string of relative path to save the stream
     '''
-    uid = str(info['uid'])
+    uid = str(stream_info['uid'])
     if not os.path.exists(uid):
         os.makedirs(uid)
     return uid + "/" + datetime.now().strftime('%b %d %Y %H:%M')
@@ -153,6 +154,7 @@ def main():
             if is_user_streaming(stream_info):
                 all_download_urls = get_stream_download_urls(stream_info)
                 default_url = all_download_urls['durl'][0]['url']
+                debug(default_url)
                 save_path = generate_save_path(stream_info)
                 video_path = save_path + '.flv'
 
@@ -160,34 +162,30 @@ def main():
                     name=video_path,
                     target=download_stream, args=(default_url, video_path))
                 p.start()
+                debug('PID: %d NAME: %s', p.pid, p.name)
 
                 comment_path = save_path + '.xml'
                 comment_worker = Process(
                     name=comment_path,
                     target=download_comments, args=(stream_info['room']['room_id'], comment_path))
                 comment_worker.start()
+                debug('PID: %d NAME: %s', comment_worker.pid, comment_worker.name)
                 p.join()
 
                 #if the stream ends, just kill the comment downloader
-                os.kill(comment_worker.pid, signal.SIGINT)
-                comment_worker.join()
+                comment_worker.terminate()
 
                 p1 = Process(
                     name='Upload ' + comment_path,
-                    target=google_drive.upload_to_google_drive, args=(comment_path,))
+                    target=google_drive.upload_to_google_drive, args=(comment_path, True))
                 p1.start()
                 info('PID: %d Start uploading %s', p1.pid, comment_path)
 
                 p2 = Process(
                     name='Upload ' + video_path,
-                    target=google_drive.upload_to_google_drive, args=(video_path,))
+                    target=google_drive.upload_to_google_drive, args=(video_path, True))
                 p2.start()
                 info('PID: %d Start uploading %s', p2.pid, video_path)
-
-                p1.join()
-                os.remove(comment_path)
-                p2.join()
-                os.remove(video_path)
             else:
                 info("%s is not streaming...", get_user_name(space_id))
                 time.sleep(3)
