@@ -91,41 +91,6 @@ def write_ass_headers(save_path):
         out.write('[Events]\n')
         out.write('Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n')
 
-
-def append_more_history(save_path, history, start_time):
-    with open(save_path, 'w') as out:
-        for item in history:
-            out.write('Dialog:0,\n')
-
-def get_time_in_china():
-    return datetime.now(gettz('Asia/Harbin'))
-
-def download_comments(room_id, save_path, start_time):
-    if save_path.endswith('.flv'):
-        save_path = save_path[0:-3] + 'ass'
-    if not save_path.endswith('ass'):
-        save_path += 'ass'
-
-    start_time = get_time_in_china()
-    write_ass_headers(save_path)
-    request_data = {'roomid': room_id}
-    resp = requests.post('http://live.bilibili.com/ajax/msg', data=request_data)
-    data = resp.json()
-    history = []
-
-    while data['code'] == 0:
-        comments = data['data']['room']
-        merge_comments(history, comments)
-        print(history)
-        if len(history) > 10:
-            append_more_history(save_path, history, start_time)
-            history = []
-
-        time.sleep(1)
-        resp = requests.post('http://live.bilibili.com/ajax/msg', data=request_data)
-        data = resp.json()
-    return data
-
 def download_stream(download_url, save_path):
     global HEADERS
     if not save_path.endswith('.flv'):
