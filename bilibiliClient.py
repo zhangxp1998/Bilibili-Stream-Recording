@@ -1,13 +1,11 @@
 from __future__ import print_function
+
 import asyncio
-import aiohttp
-import xml.dom.minidom
+import json
 import random
-import json
+import xml.dom.minidom
 from struct import *
-import json
-import config
-import re
+
 import requests
 
 
@@ -27,7 +25,7 @@ def get_chat_info(room_id):
     return (server[0].firstChild.data, port[0].firstChild.data)
 
 class bilibiliClient():
-    def __init__(self):
+    def __init__(self, room_id):
         self._CIDInfoUrl = 'http://live.bilibili.com/api/player?id=cid:'
         self._roomId = 0
         self._ChatPort = 788
@@ -37,9 +35,10 @@ class bilibiliClient():
         self.connected = False
         self._UserCount = 0
         self._ChatHost = 'livecmt-1.bilibili.com'
-
-        self._roomId = config.ROOM_ID
+        self._roomId = room_id
         self._roomId = int(self._roomId)
+        self.TURN_WELCOME = True
+        self.TURN_GIFT = True
 
 
 
@@ -59,16 +58,16 @@ class bilibiliClient():
             await self.ReceiveMessageLoop()
 
     async def HeartbeatLoop(self):
-        while self.connected == False:
+        while not self.connected:
             await asyncio.sleep(0.5)
 
-        while self.connected == True:
+        while self.connected:
             await self.SendSocketData(0, 16, self._protocolversion, 2, 1, "")
             await asyncio.sleep(30)
 
 
     async def SendJoinChannel(self, channelId):
-        self._uid = (int)(100000000000000.0 + 200000000000000.0*random.random())
+        self._uid = 0
         body = '{"roomid":%s,"uid":%s}' % (channelId, self._uid)
         await self.SendSocketData(0, 16, self._protocolversion, 7, 1, body)
         return True
@@ -86,7 +85,7 @@ class bilibiliClient():
 
 
     async def ReceiveMessageLoop(self):
-        while self.connected == True:
+        while self.connected:
             tmp = await self._reader.read(4)
             expr, = unpack('!I', tmp)
             tmp = await self._reader.read(2)
@@ -98,13 +97,13 @@ class bilibiliClient():
 
             if num2 != 0:
                 num -= 1
-                if num==0 or num==1 or num==2:
+                if num == 0 or num == 1 or num == 2:
                     tmp = await self._reader.read(4)
                     num3, = unpack('!I', tmp)
-                    print ('房间人数为 %s' % num3)
+                    print('房间人数为 %s' % num3)
                     self._UserCount = num3
                     continue
-                elif num==3 or num==4:
+                elif num == 3 or num == 4:
                     tmp = await self._reader.read(num2)
                     # strbytes, = unpack('!s', tmp)
                     try: # 为什么还会出现 utf-8 decode error??????
@@ -113,7 +112,7 @@ class bilibiliClient():
                         continue
                     self.parseDanMu(messages)
                     continue
-                elif num==5 or num==6 or num==7:
+                elif num == 5 or num == 6 or num == 7:
                     tmp = await self._reader.read(num2)
                     continue
                 else:
@@ -129,10 +128,10 @@ class bilibiliClient():
             return
         cmd = dic['cmd']
         if cmd == 'LIVE':
-            print ('直播开始。。。')
+            print('直播开始。。。')
             return
         if cmd == 'PREPARING':
-            print ('房主准备中。。。')
+            print('房主准备中。。。')
             return
         if cmd == 'DANMU_MSG':
             commentText = dic['info'][1]
@@ -144,11 +143,11 @@ class bilibiliClient():
             if isVIP:
                 commentUser = 'VIP ' + commentUser
             try:
-                print (commentUser + ': ' + commentText)
+                print(commentUser + ': ' + commentText)
             except:
                 pass
             return
-        if cmd == 'SEND_GIFT' and config.TURN_GIFT == 1:
+        if cmd == 'SEND_GIFT' and self.TURN_GIFT:
             GiftName = dic['data']['giftName']
             GiftUser = dic['data']['uname']
             Giftrcost = dic['data']['rcost']
@@ -158,7 +157,7 @@ class bilibiliClient():
             except:
                 pass
             return
-        if cmd == 'WELCOME' and config.TURN_WELCOME == 1:
+        if cmd == 'WELCOME' and self.TURN_WELCOME:
             commentUser = dic['data']['uname']
             try:
                 print ('欢迎 ' + commentUser + ' 进入房间。。。。')

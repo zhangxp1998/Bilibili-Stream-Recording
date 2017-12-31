@@ -1,7 +1,7 @@
 import asyncio
 from bilibiliClient import bilibiliClient
 
-danmuji = bilibiliClient()
+danmuji = bilibiliClient(387)
 
 tasks = [
             danmuji.connectServer() ,

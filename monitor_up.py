@@ -61,36 +61,6 @@ def sizeof_fmt(num, suffix='B'):
         num /= 1024.0
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
-def merge_comments(history, new):
-    if len(history) == 0:
-        history.extend(new)
-        return history
-    i = 0
-    last = history[len(history)-1]['timeline']
-    while i < len(new) and new[i]['timeline'] <= last:
-        i+=1
-    if i >= len(new):
-        return history
-    history.extend(new[i:])
-    return history
-
-def write_ass_headers(save_path):
-    with open(save_path, 'w') as out:
-        out.write('[Script Info]\n')
-        out.write('Title: bilibili ASS Danmaku Downloader\n')
-        out.write('ScriptType: v4.00+\n')
-        out.write('Collisions: Normal')
-        out.write('PlayResX: 560\n')
-        out.write('PlayResY: 420\n')
-        out.write('Timer: 10.0000\n')
-        out.write('[V4+ Styles]\n')
-        out.write('Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n')
-        out.write('Style: Fix,Ariel,25,&H66FFFFFF,&H66FFFFFF,&H66000000,&H66000000,1,0,0,0,100,100,0,0,1,2,0,2,20,20,2,0\n')
-        out.write('Style: R2L,Ariel,25,&H66FFFFFF,&H66FFFFFF,&H66000000,&H66000000,1,0,0,0,100,100,0,0,1,2,0,2,20,20,2,0\n')
-        out.write('\n')
-        out.write('[Events]\n')
-        out.write('Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n')
-
 def download_stream(download_url, save_path):
     global HEADERS
     if not save_path.endswith('.flv'):
@@ -122,7 +92,7 @@ def generate_save_path(info):
     uname = get_user_name(uid)
     if not os.path.exists(uid):
         os.makedirs(uid)
-    return uid + "/" + datetime.datetime.now().strftime('%b %d %Y %H:%M.flv')
+    return uid + "/" + datetime.now().strftime('%b %d %Y %H:%M.flv')
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
