@@ -64,7 +64,8 @@ def is_user_streaming(stream_info):
     Returns:
         True if the user is streaming, False otherwise
     """
-    return stream_info['room']['live_status'] != 0
+    #0: offline, 1: streaming, 2: replay
+    return stream_info['room']['live_status'] == 1
 
 def get_stream_download_urls(stream_info):
     """
