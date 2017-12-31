@@ -107,12 +107,16 @@ def download_stream(download_url, stream_save_location):
     out_file = open(stream_save_location, 'wb')
     resp = requests.get(download_url, stream=True, headers=HEADERS)
     file_len = 0
+    last_log = datetime.now()
     for buf in resp.iter_content(128*1024):
         if buf:
             out_file.write(buf)
             file_len += len(buf)
-            if(file_len & 0xFFFFF == 0):
+            delta = datetime.now() - last_log
+            
+            if delta.total_seconds() > 3:
                 info('%s: %s', stream_save_location, sizeof_fmt(file_len))
+                last_log = datetime.now()
         else:
             raise Exception("Something's not right...")
     out_file.close()
