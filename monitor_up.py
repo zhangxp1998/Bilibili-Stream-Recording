@@ -1,11 +1,11 @@
 from __future__ import print_function
 
-import datetime
+from datetime import datetime
+import json
 import os
 import re
 import sys
 import time
-import json
 from multiprocessing import Process
 
 import requests
@@ -92,11 +92,13 @@ def write_ass_headers(save_path):
         out.write('Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n')
 
 
-def append_more_history(save_path, history):
+def append_more_history(save_path, history, start_time):
     with open(save_path, 'w') as out:
         for item in history:
             out.write('Dialog:0,\n')
 
+def get_time_in_china():
+    return datetime.now(gettz('Asia/Harbin'))
 
 def download_comments(room_id, save_path, start_time):
     if save_path.endswith('.flv'):
@@ -104,6 +106,7 @@ def download_comments(room_id, save_path, start_time):
     if not save_path.endswith('ass'):
         save_path += 'ass'
 
+    start_time = get_time_in_china()
     write_ass_headers(save_path)
     request_data = {'roomid': room_id}
     resp = requests.post('http://live.bilibili.com/ajax/msg', data=request_data)
@@ -115,7 +118,7 @@ def download_comments(room_id, save_path, start_time):
         merge_comments(history, comments)
         print(history)
         if len(history) > 10:
-            append_more_history(save_path, history)
+            append_more_history(save_path, history, start_time)
             history = []
 
         time.sleep(1)
