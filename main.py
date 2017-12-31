@@ -1,2 +1,0 @@
-import asyncio
-from comment_downloader import comment_downloader
