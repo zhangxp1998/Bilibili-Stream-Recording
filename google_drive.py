@@ -35,7 +35,7 @@ def get_folder_id(DRIVE, folder_name):
         folder = DRIVE.files().create(body={
             'name': folder_name,
             'mimeType': 'application/vnd.google-apps.folder'
-        }, fields='files(id)').execute()
+        }, fields='id').execute()
         return folder['id']
 
 def upload_to_google_drive(file_path, remove=False):

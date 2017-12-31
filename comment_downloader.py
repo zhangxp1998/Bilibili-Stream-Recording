@@ -30,12 +30,9 @@ def download_comments(room_id, save_path):
 def write_xml_header(save_path):
     with open(save_path, 'wb') as out_file:
         out_file.write(b'<?xml version="1.0" encoding="UTF-8"?><i><chatserver>chat.bilibili.com</chatserver><chatid>0</chatid><mission>0</mission><maxlimit>0</maxlimit><source>k-v</source>\n')
-        out_file.write(b'</i>\n')
 
 def append_comment(save_path, comment_json):
-    with open(save_path, 'a') as out_file:
-        
-        out_file.seek(-5, 2)
+    with open(save_path, 'a') as out_file:        
         #content of the comment
         text = comment_json['info'][1]
         #name of the user who sent this comment
@@ -43,7 +40,6 @@ def append_comment(save_path, comment_json):
         #meta info
         payload = str(comment_json['info'][0])[1:-1]
         out_file.write('<d p="' + payload + '">' + user + ': ' + text + '</d>\n')
-        write_xml_footer(save_path)
 
 def write_xml_footer(save_path):
     with open(save_path, 'ab') as out_file:
@@ -191,8 +187,8 @@ class comment_downloader():
             try:
                 delta = datetime.now() - self._start_time
                 dic['info'][0][0] = delta.total_seconds()
-                append_comment(self._save_path, dic)
                 debug('%s: %s', commentUser, commentText)
+                append_comment(self._save_path, dic)
             except:
                 pass
             return

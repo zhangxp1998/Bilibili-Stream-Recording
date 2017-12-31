@@ -12,7 +12,7 @@ from logging import debug, info, error
 import requests
 
 import google_drive
-from comment_downloader import download_comments
+from comment_downloader import download_comments, write_xml_footer
 
 
 HEADERS = {
@@ -178,6 +178,7 @@ def main():
 
                 #if the stream ends, just kill the comment downloader
                 comment_worker.terminate()
+                write_xml_footer(comment_path)
 
                 p1 = Process(
                     name='Upload ' + comment_path,
