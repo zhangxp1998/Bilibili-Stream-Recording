@@ -185,7 +185,9 @@ def main():
                 info('PID: %d Start uploading %s', p2.pid, video_path)
 
                 p1.join()
+                os.remove(comment_path)
                 p2.join()
+                os.remove(video_path)
             else:
                 info("%s is not streaming...", get_user_name(space_id))
                 time.sleep(3)
