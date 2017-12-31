@@ -49,11 +49,7 @@ def upload_to_google_drive(file_path, remove=False):
     debug('File path: %s', file_path)
     folder_name, file_name = extract_components(file_path)
     print(folder_name, file_name)
-    store = file.Storage('storage.json')
-    creds = store.get()
-    if not creds or creds.invalid:
-        flow = client.flow_from_clientsecrets('client_id.json', SCOPES)
-        creds = tools.run_flow(flow, store)
+    creds = google_api_auth()
     DRIVE = discovery.build('drive', 'v3', http=creds.authorize(Http()))
     folder_id = get_folder_id(DRIVE, folder_name)
     debug(folder_id)
@@ -75,6 +71,14 @@ def upload_to_google_drive(file_path, remove=False):
         os.remove(file_path)
         info('%s removed!', file_path)
 
+
+def google_api_auth():
+    store = file.Storage('storage.json')
+    creds = store.get()
+    if not creds or creds.invalid:
+        flow = client.flow_from_clientsecrets('client_id.json', SCOPES)
+        creds = tools.run_flow(flow, store)
+    return creds
 
 if __name__ == '__main__':
     for video in sys.argv[1:]:
