@@ -159,48 +159,50 @@ def async_upload_delete(file_path):
 def main():
     if len(sys.argv) < 2:
         sys.exit(0)
+    if len(sys.argv) == 3:
+        logging.basicConfig(filename=sys.argv[2])
     while True:
-        for url in sys.argv[1:]:
-            space_id = extract_user_id(url)
-            stream_info = get_stream_info(space_id)
-            if is_user_streaming(stream_info):
-                all_download_urls = get_stream_download_urls(stream_info)
-                default_url = all_download_urls['durl'][0]['url']
-                debug(default_url)
-                save_path = generate_save_path(stream_info)
+        url = sys.argv[1]
+        space_id = extract_user_id(url)
+        stream_info = get_stream_info(space_id)
+        if is_user_streaming(stream_info):
+            all_download_urls = get_stream_download_urls(stream_info)
+            default_url = all_download_urls['durl'][0]['url']
+            debug(default_url)
+            save_path = generate_save_path(stream_info)
 
-                video_path = save_path + '.flv'
-                p = Process(
-                    name=video_path,
-                    target=download_stream, args=(default_url, video_path))
-                p.start()
-                debug('PID: %d NAME: %s', p.pid, p.name)
+            video_path = save_path + '.flv'
+            p = Process(
+                name=video_path,
+                target=download_stream, args=(default_url, video_path))
+            p.start()
+            debug('PID: %d NAME: %s', p.pid, p.name)
 
-                comment_path = save_path + '.xml'
-                comment_worker = Process(
-                    name=comment_path,
-                    target=download_comments, args=(stream_info['room']['room_id'], comment_path))
-                comment_worker.start()
-                debug('PID: %d NAME: %s', comment_worker.pid, comment_worker.name)
+            comment_path = save_path + '.xml'
+            comment_worker = Process(
+                name=comment_path,
+                target=download_comments, args=(stream_info['room']['room_id'], comment_path))
+            comment_worker.start()
+            debug('PID: %d NAME: %s', comment_worker.pid, comment_worker.name)
 
-                #save stream info and upload it
-                meta_info_path = save_path + '.json'
-                with open(meta_info_path, 'w') as outfile:
-                    json.dump(stream_info, outfile, indent=4, sort_keys=True, ensure_ascii=False)
-                async_upload_delete(meta_info_path)
+            #save stream info and upload it
+            meta_info_path = save_path + '.json'
+            with open(meta_info_path, 'w') as outfile:
+                json.dump(stream_info, outfile, indent=4, sort_keys=True, ensure_ascii=False)
+            async_upload_delete(meta_info_path)
 
-                #wait for stream to end
-                p.join()
+            #wait for stream to end
+            p.join()
 
-                #if the stream ends, just kill the comment downloader
-                comment_worker.terminate()
-                write_xml_footer(comment_path)
+            #if the stream ends, just kill the comment downloader
+            comment_worker.terminate()
+            write_xml_footer(comment_path)
 
-                async_upload_delete(comment_path)
-                async_upload_delete(video_path)
-            else:
-                info("%s is not streaming...", get_user_name(space_id))
-                time.sleep(3)
+            async_upload_delete(comment_path)
+            async_upload_delete(video_path)
+        else:
+            info("%s is not streaming...", get_user_name(space_id))
+            time.sleep(3)
 
 if __name__ == '__main__':
     logging.root.setLevel(logging.DEBUG)
