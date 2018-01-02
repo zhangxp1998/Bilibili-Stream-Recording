@@ -207,4 +207,8 @@ def main():
 if __name__ == '__main__':
     logging.root.setLevel(logging.DEBUG)
     google_drive.google_api_auth()
-    main()
+    while True:
+        try:
+            main()
+        except:
+            pass
