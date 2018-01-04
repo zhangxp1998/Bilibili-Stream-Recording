@@ -7,7 +7,6 @@ Exampe:
 import os
 import re
 import sys
-from logging import debug, info
 
 from apiclient import discovery
 from googleapiclient.http import MediaFileUpload
@@ -31,7 +30,7 @@ def get_folder_id(DRIVE, folder_name):
     if len(files['files']) >= 1:
         return files['files'][0]['id']
     else:
-        debug('Creating folder %s', folder_name)
+        print('Creating folder %s' % (folder_name, ))
         folder = DRIVE.files().create(body={
             'name': folder_name,
             'mimeType': 'application/vnd.google-apps.folder'
@@ -46,13 +45,11 @@ def upload_to_google_drive(file_path, remove=False):
         Args:
             file_path (str): The path of the file to upload
     """
-    debug('File path: %s', file_path)
     folder_name, file_name = extract_components(file_path)
     print(folder_name, file_name)
     creds = google_api_auth()
     DRIVE = discovery.build('drive', 'v3', http=creds.authorize(Http()))
     folder_id = get_folder_id(DRIVE, folder_name)
-    debug(folder_id)
     media = MediaFileUpload(file_path, chunksize=512*1024, resumable=True)
     uploader = DRIVE.files().create(
         body={'name': file_name, 'parents': [folder_id]},
@@ -64,12 +61,13 @@ def upload_to_google_drive(file_path, remove=False):
         if status:
             percent = int(status.progress() * 100)
             if percent > last_percent:
-                info("%s uploaded %.2f%%\n", file_path, (status.progress() * 100))
+                print("%s uploaded %.2f%%" % (file_path, (status.progress() * 100)))
                 last_percent = percent
-    info('%s uploaded!', file_path)
+    print('%s uploaded!' % (file_path,))
     if remove:
         os.remove(file_path)
-        info('%s removed!', file_path)
+        print('%s removed!' % (file_path))
+    return response
 
 
 def google_api_auth():

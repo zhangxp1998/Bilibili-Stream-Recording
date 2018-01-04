@@ -6,9 +6,8 @@ import re
 import sys
 import time
 from datetime import datetime
-from multiprocessing import Process
+from multiprocessing import Process, Pool
 import logging
-from logging import debug, info, error
 import requests
 
 import google_drive
@@ -40,7 +39,7 @@ def check_json_error(data):
             data (obj): an json object returned from request
     """
     if data['code'] != 0:
-        error('%d, %s', data['code'], data['msg'])
+        print('%d, %s' % (data['code'], data['msg']))
         raise Exception(data['msg'])
 
 def get_stream_info(user_id):
@@ -116,7 +115,7 @@ def download_stream(download_url, stream_save_location):
             delta = datetime.now() - last_log
             
             if delta.total_seconds() > 3:
-                info('%s: %s', stream_save_location, sizeof_fmt(file_len))
+                print('%s: %s' % (stream_save_location, sizeof_fmt(file_len)))
                 last_log = datetime.now()
         else:
             raise Exception("Something's not right...")
@@ -149,12 +148,15 @@ def generate_save_path(stream_info):
         os.makedirs(uid)
     return uid + "/" + datetime.now().strftime('%b %d %Y %H:%M:%S')
 
+pool = Pool(processes=4)
 def async_upload_delete(file_path):
-    p = Process(
-        name='Upload ' + file_path,
-        target=google_drive.upload_to_google_drive, args=(file_path, True))
-    p.start()
-    info('PID: %d Start uploading %s', p.pid, file_path)
+    global pool
+    pool.apply_async(
+        func=google_drive.upload_to_google_drive,
+        args=(file_path, True),
+        callback=print,
+        error_callback=lambda e: print("%s upload error: %s" % (file_path, e)))
+    print('Start uploading %s' % (file_path, ))
 
 def main():
     if len(sys.argv) < 2:
@@ -168,7 +170,7 @@ def main():
         if is_user_streaming(stream_info):
             all_download_urls = get_stream_download_urls(stream_info)
             default_url = all_download_urls['durl'][0]['url']
-            debug(default_url)
+            print(default_url)
             save_path = generate_save_path(stream_info)
 
             video_path = save_path + '.flv'
@@ -176,14 +178,14 @@ def main():
                 name=video_path,
                 target=download_stream, args=(default_url, video_path))
             p.start()
-            debug('PID: %d NAME: %s', p.pid, p.name)
+            print('PID: %d NAME: %s' % (p.pid, p.name))
 
             comment_path = save_path + '.xml'
             comment_worker = Process(
                 name=comment_path,
                 target=download_comments, args=(stream_info['room']['room_id'], comment_path))
             comment_worker.start()
-            debug('PID: %d NAME: %s', comment_worker.pid, comment_worker.name)
+            print('PID: %d NAME: %s' % (comment_worker.pid, comment_worker.name))
 
             #save stream info and upload it
             meta_info_path = save_path + '.json'
@@ -201,11 +203,10 @@ def main():
             async_upload_delete(comment_path)
             async_upload_delete(video_path)
         else:
-            info("%s is not streaming...", get_user_name(space_id))
-            time.sleep(3)
+            print("%s is not streaming..." % (get_user_name(space_id),))
+            time.sleep(30)
 
 if __name__ == '__main__':
-    logging.root.setLevel(logging.DEBUG)
     google_drive.google_api_auth()
     while True:
         try:
