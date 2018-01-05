@@ -76,7 +76,7 @@ def get_stream_download_urls(stream_info):
     """
     global HEADERS
     room_id = stream_info['room']['room_id']
-    resp = requests.get('https://api.live.bilibili.com/api/playurl?cid=%s&otype=json&quality=0' % str(room_id), headers=HEADERS)
+    resp = requests.get('https://api.live.bilibili.com/room/v1/Room/playUrl?cid=%s&quality=4&platform=web' % str(room_id), headers=HEADERS)
     return resp.json()
 
 def sizeof_fmt(num, suffix='B'):
@@ -208,7 +208,7 @@ def main():
             #if the stream ends, just kill the comment downloader
             comment_worker.terminate()
             write_xml_footer(comment_path)
-            
+
             if os.path.getsize(video_path) == 0:
                 os.remove(video_path)
                 os.remove(comment_path)
