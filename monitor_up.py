@@ -4,6 +4,7 @@ import os
 import json
 import re
 import sys
+from random import random
 import time
 from datetime import datetime
 from multiprocessing import Process, Pool
@@ -174,7 +175,9 @@ def main():
         if is_user_streaming(stream_info):
             # obtain download url of this user's stream
             all_download_urls = get_stream_download_urls(stream_info)
-            default_url = all_download_urls['durl'][0]['url']
+            #randomly choose an URL
+            url_count = len(all_download_urls['durl'])
+            default_url = all_download_urls['durl'][int(random()*url_count)]['url']
             print(default_url)
 
             #generate a unique save path for downloading files
