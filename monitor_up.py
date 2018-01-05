@@ -108,12 +108,13 @@ def download_stream(download_url, stream_save_location):
     resp = requests.get(download_url, stream=True, headers=HEADERS)
     file_len = 0
     last_log = datetime.now()
+    #buffer size 128K
     for buf in resp.iter_content(128*1024):
         if buf:
             out_file.write(buf)
             file_len += len(buf)
             delta = datetime.now() - last_log
-            
+            #print file size every 3 second
             if delta.total_seconds() > 3:
                 print('%s: %s' % (stream_save_location, sizeof_fmt(file_len)))
                 last_log = datetime.now()
@@ -163,16 +164,22 @@ def main():
         sys.exit(0)
     if len(sys.argv) == 3:
         logging.basicConfig(filename=sys.argv[2])
+    # Parse the users's UID
+    url = sys.argv[1]
+    space_id = extract_user_id(url)
     while True:
-        url = sys.argv[1]
-        space_id = extract_user_id(url)
+        # obtain streamming information about this user
         stream_info = get_stream_info(space_id)
         if is_user_streaming(stream_info):
+            # obtain download url of this user's stream
             all_download_urls = get_stream_download_urls(stream_info)
             default_url = all_download_urls['durl'][0]['url']
             print(default_url)
+
+            #generate a unique save path for downloading files
             save_path = generate_save_path(stream_info)
 
+            #Download the video stream asychronously
             video_path = save_path + '.flv'
             p = Process(
                 name=video_path,
@@ -180,6 +187,7 @@ def main():
             p.start()
             print('PID: %d NAME: %s' % (p.pid, p.name))
 
+            #Download the comment stream asychronously
             comment_path = save_path + '.xml'
             comment_worker = Process(
                 name=comment_path,
@@ -200,6 +208,7 @@ def main():
             comment_worker.terminate()
             write_xml_footer(comment_path)
 
+            #upload the video and comment file, then delete both files
             async_upload_delete(comment_path)
             async_upload_delete(video_path)
         else:

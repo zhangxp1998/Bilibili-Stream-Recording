@@ -18,6 +18,13 @@ SCOPES = [
     'https://www.googleapis.com/auth/drive.file']
 
 def extract_components(file_path):
+    '''
+    Decouple file path into folder path and file name
+    Args:
+        file_path: the path to decouple
+    Returns:
+        a tuple of decoupled components (directory, filename)
+    '''
     regex = re.compile(r'(.*)/(.*\..*)')
     matcher = regex.match(file_path)
     folder_name = matcher.group(1)
@@ -25,6 +32,11 @@ def extract_components(file_path):
     return (folder_name, file_name)
 
 def get_folder_id(DRIVE, folder_name):
+    '''
+    Obtain folder_id for folder_name, create the folder if necessary
+    Args:
+        folder_name: string of name of the folder
+    '''
     files = DRIVE.files().list(
         q='name = "%s" and mimeType = "application/vnd.google-apps.folder" and trashed = false' % folder_name, fields='files(id)').execute()
     if len(files['files']) >= 1:
@@ -49,8 +61,11 @@ def upload_to_google_drive(file_path, remove=False):
     print(folder_name, file_name)
     creds = google_api_auth()
     DRIVE = discovery.build('drive', 'v3', http=creds.authorize(Http()))
+    #save the file to specific folder
     folder_id = get_folder_id(DRIVE, folder_name)
+    #buffer size 512K
     media = MediaFileUpload(file_path, chunksize=512*1024, resumable=True)
+    #upload to the folder specified in file_path
     uploader = DRIVE.files().create(
         body={'name': file_name, 'parents': [folder_id]},
         media_body=media)
@@ -58,6 +73,7 @@ def upload_to_google_drive(file_path, remove=False):
     last_percent = 0
     while response is None:
         status, response = uploader.next_chunk()
+        #Print the progress if the percentage changed
         if status:
             percent = int(status.progress() * 100)
             if percent > last_percent:
@@ -71,6 +87,9 @@ def upload_to_google_drive(file_path, remove=False):
 
 
 def google_api_auth():
+    '''
+    obtain authorization to use Google Drive's API
+    '''
     store = file.Storage('storage.json')
     creds = store.get()
     if not creds or creds.invalid:
