@@ -208,6 +208,12 @@ def main():
             #if the stream ends, just kill the comment downloader
             comment_worker.terminate()
             write_xml_footer(comment_path)
+            
+            if os.path.getsize(video_path) == 0:
+                os.remove(video_path)
+                os.remove(comment_path)
+                print('Failed to download stream')
+                continue
 
             #upload the video and comment file, then delete both files
             async_upload_delete(comment_path)
