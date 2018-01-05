@@ -112,6 +112,7 @@ def download_stream(download_url, stream_save_location):
     for buf in resp.iter_content(128*1024):
         if buf:
             out_file.write(buf)
+            out_file.flush()
             file_len += len(buf)
             delta = datetime.now() - last_log
             #print file size every 3 second
