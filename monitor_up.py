@@ -176,8 +176,8 @@ def main():
             # obtain download url of this user's stream
             all_download_urls = get_stream_download_urls(stream_info)
             #randomly choose an URL
-            url_count = len(all_download_urls['durl'])
-            default_url = all_download_urls['durl'][int(random()*url_count)]['url']
+            url_count = len(all_download_urls['data']['durl'])
+            default_url = all_download_urls['data']['durl'][int(random()*url_count)]['url']
             print(default_url)
 
             #generate a unique save path for downloading files
