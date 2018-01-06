@@ -109,6 +109,7 @@ def download_stream(download_url, stream_save_location):
     resp = requests.get(download_url, stream=True, headers=HEADERS)
     file_len = 0
     last_log = datetime.now()
+    last_size = ''
     #buffer size 128K
     for buf in resp.iter_content(128*1024):
         if buf:
@@ -116,9 +117,11 @@ def download_stream(download_url, stream_save_location):
             out_file.flush()
             file_len += len(buf)
             delta = datetime.now() - last_log
+            size = sizeof_fmt(file_len)
             #print file size every 3 second
-            if delta.total_seconds() > 3:
-                print('%s: %s' % (stream_save_location, sizeof_fmt(file_len)))
+            if delta.total_seconds() > 3 and size != last_size:
+                print('%s: %s' % (stream_save_location, size))
+                last_size = size
                 last_log = datetime.now()
         else:
             raise Exception("Something's not right...")
