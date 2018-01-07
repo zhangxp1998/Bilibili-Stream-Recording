@@ -154,7 +154,7 @@ def generate_save_path(stream_info):
         os.makedirs(uid)
     return uid + "/" + datetime.now().strftime('%b %d %Y %H:%M:%S')
 
-pool = Pool(processes=4)
+pool = Pool(processes=2)
 def async_upload_delete(file_path):
     global pool
     pool.apply_async(
