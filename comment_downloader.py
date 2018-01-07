@@ -9,8 +9,6 @@ from struct import *
 import requests
 
 def download_comments(room_id, save_path):
-    if save_path.endswith('.flv'):
-        save_path = save_path[:-3] + 'xml'
     danmuji = comment_downloader(room_id, save_path)
     tasks = [
                 danmuji.connectServer() ,
