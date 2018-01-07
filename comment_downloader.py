@@ -186,7 +186,7 @@ class comment_downloader():
             try:
                 delta = datetime.now() - self._start_time
                 dic['info'][0][0] = delta.total_seconds()
-                print('%s: %s' % (commentUser, commentText))
+                #print('%s: %s' % (commentUser, commentText))
                 append_comment(self._save_path, dic)
             except:
                 pass
