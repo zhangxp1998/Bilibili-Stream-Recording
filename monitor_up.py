@@ -213,6 +213,7 @@ def main():
 
             #if the stream ends, just kill the comment downloader
             comment_worker.terminate()
+            comment_worker.join()
             write_xml_footer(comment_path)
 
             if os.path.getsize(video_path) == 0:
