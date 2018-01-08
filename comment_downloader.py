@@ -11,7 +11,7 @@ import requests
 def download_comments(room_id, save_path):
     danmuji = comment_downloader(room_id, save_path)
     tasks = [
-                danmuji.connectServer() ,
+                danmuji.connectServer(),
                 danmuji.HeartbeatLoop()
             ]
     loop = asyncio.get_event_loop()
@@ -57,7 +57,7 @@ def get_chat_info(room_id):
     return (server[0].firstChild.data, port[0].firstChild.data)
 
 class comment_downloader():
-    def __init__(self, room_id, save_path = 'test.xml'):
+    def __init__(self, room_id, save_path = 'test.xml', listener_func = None):
         self._CIDInfoUrl = 'http://live.bilibili.com/api/player?id=cid:'
         self._roomId = 0
         self._ChatPort = 788
@@ -73,6 +73,7 @@ class comment_downloader():
         self._start_time = datetime.now()
         self.TURN_WELCOME = True
         self.TURN_GIFT = True
+        self.callback = listener_func
 
 
     async def connectServer(self):
@@ -101,13 +102,13 @@ class comment_downloader():
             await asyncio.sleep(0.5)
 
         while self.connected:
-            await self.SendSocketData(0, 16, self._protocolversion, 2, 1, "")
+            await self.SendSocketData(0, 16, self._protocolversion, 2, 1, "[object object]")
             await asyncio.sleep(30)
 
 
     async def SendJoinChannel(self, channelId):
         self._uid = 0
-        body = '{"roomid":%s,"uid":%s}' % (channelId, self._uid)
+        body = '{"roomid":%s, "uid":%s, "protover": %d}' % (channelId, self._uid, self._protocolversion)
         await self.SendSocketData(0, 16, self._protocolversion, 7, 1, body)
         return True
 
@@ -165,14 +166,17 @@ class comment_downloader():
             dic = json.loads(messages)
         except: # 有些情况会 jsondecode 失败，未细究，可能平台导致
             return
+        if self.callback is not None:
+            return self.callback(dic)
+
         cmd = dic['cmd']
         if cmd == 'LIVE':
             print('直播开始。。。')
             return
-        if cmd == 'PREPARING':
+        elif cmd == 'PREPARING':
             print('房主准备中。。。')
             return
-        if cmd == 'DANMU_MSG':
+        elif cmd == 'DANMU_MSG':
             commentText = dic['info'][1]
             commentUser = dic['info'][2][1]
             isAdmin = dic['info'][2][2] == '1'
@@ -189,7 +193,7 @@ class comment_downloader():
             except:
                 pass
             return
-        if cmd == 'SEND_GIFT' and self.TURN_GIFT:
+        elif cmd == 'SEND_GIFT' and self.TURN_GIFT:
             GiftName = dic['data']['giftName']
             GiftUser = dic['data']['uname']
             Giftrcost = dic['data']['rcost']
@@ -199,11 +203,34 @@ class comment_downloader():
             except:
                 pass
             return
-        if cmd == 'WELCOME' and self.TURN_WELCOME:
+        elif cmd == 'WELCOME' and self.TURN_WELCOME:
             commentUser = dic['data']['uname']
             try:
                 print('欢迎 %s 进入房间。。。。' % (commentUser, ))
             except:
                 pass
             return
+        # elif cmd == 'SYS_GIFT':
+        #     check_raffle(dic)
+        else:
+            print(json.dumps(dic, indent=4, sort_keys=True, ensure_ascii=False))
         return
+    
+def check_raffle(dic):
+    roomid = dic.get('real_roomid')
+    if roomid is None:
+        return
+    HEADERS = {
+        'User-Agent': 'Safari/537.36',
+        'Accept-Encoding':'gzip, deflate, br',
+        'Referer': dic['url']
+    }
+    resp = requests.get('http://api.live.bilibili.com/activity/v1/Raffle/check?roomid=' + str(roomid), headers=HEADERS)
+    data = resp.json()
+    if data['code'] != 0:
+        print('Check Raffle', data['msg'])
+    for event in data['data']:
+        resp = requests.get('http://api.live.bilibili.com/gift/v2/smalltv/join?roomid=%s&raffleId=%s' % (roomid, event['raffleId']))
+        data = resp.json()
+        print('Enter Raffle %d: %s' % (event['raffleId'], data['msg']))
+    return
