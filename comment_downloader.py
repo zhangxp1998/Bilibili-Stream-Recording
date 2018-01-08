@@ -113,11 +113,11 @@ class comment_downloader():
         return True
 
 
-    async def SendSocketData(self, packetlength, magic, ver, action, param, body):
+    async def SendSocketData(self, packetlength, headrlen, ver, action, param, body):
         bytearr = body.encode('utf-8')
         if packetlength == 0:
-            packetlength = len(bytearr) + 16
-        sendbytes = pack('!IHHII', packetlength, magic, ver, action, param)
+            packetlength = len(bytearr) + headrlen
+        sendbytes = pack('!IHHII', packetlength, headrlen, ver, action, param)
         if len(bytearr) != 0:
             sendbytes = sendbytes + bytearr
         self._writer.write(sendbytes)
