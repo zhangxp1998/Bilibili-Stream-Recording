@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import asyncio
 import sys
-
+import json
 import requests
 
 from comment_downloader import comment_downloader
@@ -10,6 +10,10 @@ from test_download_comments import extract_short_roomid, get_room_id
 
 
 def check_raffle(dic):
+    cmd = dic['cmd']
+    if cmd != 'SYS_GIFT':
+        return
+    print(json.dumps(dic, indent=2, sort_keys=True))
     roomid = dic.get('real_roomid')
     if roomid is None:
         return
