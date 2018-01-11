@@ -214,30 +214,6 @@ class comment_downloader():
             except:
                 pass
             return
-        # elif cmd == 'SYS_GIFT':
-        #     check_raffle(dic)
         else:
             print(json.dumps(dic, indent=4, sort_keys=True, ensure_ascii=False))
         return
-
-
-def check_raffle(dic):
-    roomid = dic.get('real_roomid')
-    if roomid is None:
-        return
-    HEADERS = {
-        'User-Agent': 'Safari/537.36',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Referer': dic['url']
-    }
-    resp = requests.get(
-        'http://api.live.bilibili.com/activity/v1/Raffle/check?roomid=' + str(roomid), headers=HEADERS)
-    data = resp.json()
-    if data['code'] != 0:
-        print('Check Raffle', data['msg'])
-    for event in data['data']:
-        resp = requests.get(
-            'http://api.live.bilibili.com/gift/v2/smalltv/join?roomid=%s&raffleId=%s' % (roomid, event['raffleId']))
-        data = resp.json()
-        print('Enter Raffle %d: %s' % (event['raffleId'], data['msg']))
-    return
