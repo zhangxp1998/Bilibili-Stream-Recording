@@ -6,58 +6,50 @@ import xml.dom.minidom
 from datetime import datetime
 from struct import *
 
+import aiohttp
 import requests
+
 
 def download_comments(room_id, save_path):
     danmuji = comment_downloader(room_id, save_path)
     tasks = [
-                danmuji.connectServer(),
-                danmuji.HeartbeatLoop()
-            ]
+        danmuji.connectServer(),
+        danmuji.HeartbeatLoop()
+    ]
     loop = asyncio.get_event_loop()
     try:
         loop.run_until_complete(asyncio.wait(tasks))
     except KeyboardInterrupt:
         print('Keyboard Interrupt received...')
         danmuji.close()
-        
+
         for task in asyncio.Task.all_tasks():
             task.cancel()
+
 
 def write_xml_header(save_path):
     with open(save_path, 'wb') as out_file:
         out_file.write(b'<?xml version="1.0" encoding="UTF-8"?><i><chatserver>chat.bilibili.com</chatserver><chatid>0</chatid><mission>0</mission><maxlimit>0</maxlimit><source>k-v</source>\n')
 
+
 def append_comment(save_path, comment_json):
-    with open(save_path, 'a') as out_file:        
-        #content of the comment
+    with open(save_path, 'a') as out_file:
+        # content of the comment
         text = comment_json['info'][1]
-        #name of the user who sent this comment
+        # name of the user who sent this comment
         user = comment_json['info'][2][1]
-        #meta info
+        # meta info
         payload = str(comment_json['info'][0])[1:-1]
-        out_file.write('<d p="' + payload + '">' + user + ': ' + text + '</d>\n')
+        out_file.write('<d p="' + payload + '">' +
+                       user + ': ' + text + '</d>\n')
+
 
 def write_xml_footer(save_path):
     with open(save_path, 'ab') as out_file:
         out_file.write(b'</i>\n')
 
-def get_chat_info(room_id):
-    #room_id is the true room id obtained from 
-    #https://api.live.bilibili.com/room/v1/Room/room_init?id=
-    resp = requests.get('http://live.bilibili.com/api/player?id=cid:' + str(room_id), headers={
-        'Accept': '*/*',
-        'User-Agent': 'Safari/537.36',
-        'Accept-Encoding':'gzip, deflate, br'})
-    text = resp.text
-    dom = xml.dom.minidom.parseString('<root>' + text + '</root>')
-    root = dom.documentElement
-    server = root.getElementsByTagName('dm_server')
-    port = root.getElementsByTagName('dm_port')
-    return (server[0].firstChild.data, port[0].firstChild.data)
-
 class comment_downloader():
-    def __init__(self, room_id, save_path = 'test.xml', listener_func = None):
+    def __init__(self, room_id, save_path='test.xml', listener_func=None):
         self._CIDInfoUrl = 'http://live.bilibili.com/api/player?id=cid:'
         self._roomId = 0
         self._ChatPort = 788
@@ -74,13 +66,13 @@ class comment_downloader():
         self.TURN_WELCOME = True
         self.TURN_GIFT = True
         self.callback = listener_func
-
+        self._session = aiohttp.ClientSession()
 
     async def connectServer(self):
         # self._roomId = get_true_roomid(self._roomId)
         print('room_id: ' + str(self._roomId))
-        self._ChatHost, self._ChatPort = get_chat_info(self._roomId)
-        
+        self._ChatHost, self._ChatPort = await self.get_chat_info()
+
         reader, writer = await asyncio.open_connection(self._ChatHost, self._ChatPort)
         self._reader = reader
         self._writer = writer
@@ -91,7 +83,21 @@ class comment_downloader():
             self.connected = True
             print('Connected!')
             await self.ReceiveMessageLoop()
-    
+
+    async def get_chat_info(self):
+        # room_id is the true room id obtained from
+        # https://api.live.bilibili.com/room/v1/Room/room_init?id=
+        async with self._session.get('http://live.bilibili.com/api/player?id=cid:' + str(self._roomId), headers={
+            'Accept': '*/*',
+            'User-Agent': 'Safari/537.36',
+            'Accept-Encoding': 'gzip, deflate, br'}) as resp:
+            text = await resp.text()
+            dom = xml.dom.minidom.parseString('<root>' + text + '</root>')
+            root = dom.documentElement
+            server = root.getElementsByTagName('dm_server')
+            port = root.getElementsByTagName('dm_port')
+            return (server[0].firstChild.data, port[0].firstChild.data)
+
     def close(self):
         self.connected = False
         self._writer.close()
@@ -105,13 +111,12 @@ class comment_downloader():
             await self.SendSocketData(0, 16, self._protocolversion, 2, 1, "[object object]")
             await asyncio.sleep(30)
 
-
     async def SendJoinChannel(self, channelId):
         self._uid = 0
-        body = '{"roomid":%s, "uid":%s, "protover": %d}' % (channelId, self._uid, self._protocolversion)
+        body = '{"roomid":%s, "uid":%s, "protover": %d}' % (
+            channelId, self._uid, self._protocolversion)
         await self.SendSocketData(0, 16, self._protocolversion, 7, 1, body)
         return True
-
 
     async def SendSocketData(self, packetlength, headrlen, ver, action, param, body):
         bytearr = body.encode('utf-8')
@@ -122,7 +127,6 @@ class comment_downloader():
             sendbytes = sendbytes + bytearr
         self._writer.write(sendbytes)
         await self._writer.drain()
-
 
     async def ReceiveMessageLoop(self):
         while self.connected:
@@ -146,7 +150,7 @@ class comment_downloader():
                 elif num == 3 or num == 4:
                     tmp = await self._reader.read(num2)
                     # strbytes, = unpack('!s', tmp)
-                    try: # 为什么还会出现 utf-8 decode error??????
+                    try:  # 为什么还会出现 utf-8 decode error??????
                         messages = tmp.decode('utf-8')
                     except:
                         continue
@@ -160,11 +164,11 @@ class comment_downloader():
                         tmp = await self._reader.read(num2)
                     else:
                         continue
-    
+
     def parseDanMu(self, messages):
         try:
             dic = json.loads(messages)
-        except: # 有些情况会 jsondecode 失败，未细究，可能平台导致
+        except:  # 有些情况会 jsondecode 失败，未细究，可能平台导致
             return
         if self.callback is not None:
             return self.callback(dic)
@@ -215,22 +219,25 @@ class comment_downloader():
         else:
             print(json.dumps(dic, indent=4, sort_keys=True, ensure_ascii=False))
         return
-    
+
+
 def check_raffle(dic):
     roomid = dic.get('real_roomid')
     if roomid is None:
         return
     HEADERS = {
         'User-Agent': 'Safari/537.36',
-        'Accept-Encoding':'gzip, deflate, br',
+        'Accept-Encoding': 'gzip, deflate, br',
         'Referer': dic['url']
     }
-    resp = requests.get('http://api.live.bilibili.com/activity/v1/Raffle/check?roomid=' + str(roomid), headers=HEADERS)
+    resp = requests.get(
+        'http://api.live.bilibili.com/activity/v1/Raffle/check?roomid=' + str(roomid), headers=HEADERS)
     data = resp.json()
     if data['code'] != 0:
         print('Check Raffle', data['msg'])
     for event in data['data']:
-        resp = requests.get('http://api.live.bilibili.com/gift/v2/smalltv/join?roomid=%s&raffleId=%s' % (roomid, event['raffleId']))
+        resp = requests.get(
+            'http://api.live.bilibili.com/gift/v2/smalltv/join?roomid=%s&raffleId=%s' % (roomid, event['raffleId']))
         data = resp.json()
         print('Enter Raffle %d: %s' % (event['raffleId'], data['msg']))
     return
