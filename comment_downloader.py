@@ -6,7 +6,6 @@ import xml.dom.minidom
 from datetime import datetime
 from struct import *
 
-import aiohttp
 import requests
 
 
@@ -66,7 +65,6 @@ class comment_downloader():
         self.TURN_WELCOME = True
         self.TURN_GIFT = True
         self.callback = listener_func
-        self._session = aiohttp.ClientSession()
 
     async def connectServer(self):
         # self._roomId = get_true_roomid(self._roomId)
@@ -87,11 +85,11 @@ class comment_downloader():
     async def get_chat_info(self):
         # room_id is the true room id obtained from
         # https://api.live.bilibili.com/room/v1/Room/room_init?id=
-        async with self._session.get('http://live.bilibili.com/api/player?id=cid:' + str(self._roomId), headers={
+            resp = requests.get('http://live.bilibili.com/api/player?id=cid:' + str(self._roomId), headers={
             'Accept': '*/*',
             'User-Agent': 'Safari/537.36',
-            'Accept-Encoding': 'gzip, deflate, br'}) as resp:
-            text = await resp.text()
+            'Accept-Encoding': 'gzip, deflate, br'})
+            text = resp.text
             dom = xml.dom.minidom.parseString('<root>' + text + '</root>')
             root = dom.documentElement
             server = root.getElementsByTagName('dm_server')
