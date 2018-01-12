@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import asyncio
+from asyncio import wait_for, open_connection
 import json
 import xml.dom.minidom
 from datetime import datetime
@@ -70,8 +71,7 @@ class comment_downloader():
         # self._roomId = get_true_roomid(self._roomId)
         print('room_id: ' + str(self._roomId))
         self._ChatHost, self._ChatPort = await self.get_chat_info()
-
-        reader, writer = await asyncio.open_connection(self._ChatHost, self._ChatPort)
+        reader, writer = await wait_for(open_connection(self._ChatHost, self._ChatPort), timeout=5)
         self._reader = reader
         self._writer = writer
         self._start_time = datetime.now()
