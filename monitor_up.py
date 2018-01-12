@@ -116,7 +116,7 @@ def download_stream(download_url, stream_save_location):
     """
     global HEADERS
     out_file = open(stream_save_location, 'wb')
-    resp = requests.get(download_url, stream=True, headers=HEADERS, timeout=10)
+    resp = requests.get(download_url, stream=True, headers=HEADERS, timeout=(10, 5))
     file_len = 0
     last_log = datetime.now()
     last_size = ''
