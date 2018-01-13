@@ -11,26 +11,27 @@ from test_download_comments import extract_short_roomid, get_room_id
 
 def check_raffle(dic):
     cmd = dic['cmd']
-    if cmd != 'SYS_GIFT':
+    if cmd != 'SYS_MSG':
         return
-    print(json.dumps(dic, indent=2, sort_keys=True))
+    # print(json.dumps(dic, indent=2, sort_keys=True, ensure_ascii=False))
     roomid = dic.get('real_roomid')
+    print(roomid)
     if roomid is None:
         return
     HEADERS = {
-        'User-Agent': 'Safari/537.36',
         'Accept-Encoding': 'gzip, deflate, br',
         'Referer': dic['url'],
-        'Cookies': sys.argv[2]
+        'Cookies': sys.argv[2],
+        'User-Agent': 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/604.4.7 (KHTML, like Gecko) Version/11.0.2 Safari/604.4.7',
+        'Accept': 'application/json, text/plain, */*'
     }
     resp = requests.get(
-        'http://api.live.bilibili.com/activity/v1/Raffle/check?roomid=' + str(roomid), headers=HEADERS)
+        'http://api.live.bilibili.com/gift/v2/smalltv/check?roomid=' + str(roomid), headers=HEADERS)
     data = resp.json()
-    if data['code'] != 0:
-        print('Check Raffle', data['msg'])
+    # print(json.dumps(data, indent=2, sort_keys=True, ensure_ascii=False))
     for event in data['data']:
         resp = requests.get(
-            'http://api.live.bilibili.com/gift/v2/smalltv/join?roomid=%s&raffleId=%s' % (roomid, event['raffleId']))
+            'http://api.live.bilibili.com/gift/v2/smalltv/join?roomid=%s&raffleId=%s' % (roomid, event['raffleId']), headers={'Referer': dic['url'], 'Cookie': sys.argv[2]})
         data = resp.json()
         print('Enter Raffle %d: %s' % (event['raffleId'], data['msg']))
     return
