@@ -37,10 +37,10 @@ def check_raffle(dic):
     return
 
 
-if __name__ == '__main__':
-    if len(sys.argv) < 3:
+def main(argv):
+    if len(argv) < 3:
         sys.exit(0)
-    url = sys.argv[1]
+    url = argv[1]
     room_id = get_room_id(extract_short_roomid(url))
     danmuji = comment_downloader(room_id, '/dev/null', check_raffle)
     tasks = [
@@ -48,11 +48,15 @@ if __name__ == '__main__':
         danmuji.HeartbeatLoop()
     ]
     loop = asyncio.get_event_loop()
-    try:
-        loop.run_until_complete(asyncio.wait(tasks))
-    except KeyboardInterrupt:
-        print('Keyboard Interrupt received...')
-        danmuji.close()
+    loop.run_until_complete(asyncio.wait(tasks))
 
-        for task in asyncio.Task.all_tasks():
-            task.cancel()
+if __name__ == '__main__':
+    while True:
+        try:
+            main(sys.argv)
+        except KeyboardInterrupt:
+            for task in asyncio.Task.all_tasks():
+                task.cancel()
+            sys.exit(0)
+        except:
+            pass
