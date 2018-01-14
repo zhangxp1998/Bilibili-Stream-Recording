@@ -1,9 +1,9 @@
 from __future__ import print_function
 
 import asyncio
-from asyncio import wait_for, open_connection
 import json
 import xml.dom.minidom
+from asyncio import open_connection, wait_for
 from datetime import datetime
 from struct import *
 
@@ -213,5 +213,5 @@ class comment_downloader():
                 pass
             return
         else:
-            print(json.dumps(dic, indent=4, sort_keys=True, ensure_ascii=False))
+            print(json.dumps(dic, indent=2, sort_keys=True, ensure_ascii=False))
         return
