@@ -16,7 +16,8 @@ from comment_downloader import download_comments, write_xml_footer
 
 
 HEADERS = {
-    'User-Agent': 'Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/604.4.7 (KHTML, like Gecko) Version/11.0.2 Safari/604.4.7',
     'Accept-Encoding': 'gzip, deflate, br'
 }
 
