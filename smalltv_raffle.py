@@ -1,8 +1,9 @@
 from __future__ import print_function
 
 import asyncio
-import sys
 import json
+import sys
+
 import requests
 
 from comment_downloader import comment_downloader
@@ -22,7 +23,7 @@ def check_raffle(dic):
         'Accept-Encoding': 'gzip, deflate, br',
         'Referer': dic['url'],
         'Cookies': sys.argv[2],
-        'User-Agent': 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/604.4.7 (KHTML, like Gecko) Version/11.0.2 Safari/604.4.7',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/604.4.7 (KHTML, like Gecko) Version/11.0.2 Safari/604.4.7',
         'Accept': 'application/json, text/plain, */*'
     }
     resp = requests.get(
@@ -36,10 +37,7 @@ def check_raffle(dic):
         print('Enter Raffle %d: %s' % (event['raffleId'], data['msg']))
     return
 
-
-if __name__ == '__main__':
-    if len(sys.argv) < 3:
-        sys.exit(0)
+def main():
     url = sys.argv[1]
     room_id = get_room_id(extract_short_roomid(url))
     danmuji = comment_downloader(room_id, '/dev/null', check_raffle)
@@ -48,11 +46,17 @@ if __name__ == '__main__':
         danmuji.HeartbeatLoop()
     ]
     loop = asyncio.get_event_loop()
-    try:
-        loop.run_until_complete(asyncio.wait(tasks))
-    except KeyboardInterrupt:
-        print('Keyboard Interrupt received...')
-        danmuji.close()
+    loop.run_until_complete(asyncio.wait(tasks))
 
-        for task in asyncio.Task.all_tasks():
-            task.cancel()
+if __name__ == '__main__':
+    if len(sys.argv) < 3:
+        sys.exit(0)
+    while True:
+        try:
+            main()
+        except KeyboardInterrupt:
+            for task in asyncio.Task.all_tasks():
+                task.cancel()
+            sys.exit(0)
+        except:
+            pass

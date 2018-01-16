@@ -1,19 +1,19 @@
 from __future__ import print_function
 
-import os
 import json
+import logging
+import os
 import re
 import sys
-from random import random
 import time
 from datetime import datetime
-from multiprocessing import Process, Pool
-import logging
+from multiprocessing import Pool, Process
+from random import random
+
 import requests
 
 import google_drive
 from comment_downloader import download_comments, write_xml_footer
-
 
 HEADERS = {
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -225,7 +225,7 @@ def main():
             # save stream info and upload it
             meta_info_path = save_path + '.json'
             with open(meta_info_path, 'w') as outfile:
-                json.dump(stream_info, outfile, indent=4,
+                json.dump(stream_info, outfile, indent=2,
                           sort_keys=True, ensure_ascii=False)
             async_upload_delete(meta_info_path)
 
