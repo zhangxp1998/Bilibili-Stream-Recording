@@ -12,8 +12,6 @@ from test_download_comments import extract_short_roomid, get_room_id
 
 def check_raffle(dic):
     cmd = dic['cmd']
-    if cmd != 'SYS_MSG':
-        return
     # print(json.dumps(dic, indent=2, sort_keys=True, ensure_ascii=False))
     roomid = dic.get('real_roomid')
     print(roomid)
