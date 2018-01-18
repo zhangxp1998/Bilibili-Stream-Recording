@@ -15,7 +15,7 @@ def check_raffle(dic):
     roomid = dic.get('real_roomid')
     if roomid is None:
         return
-    print(json.dumps(dic, indent=2, sort_keys=True, ensure_ascii=False))
+    # print(json.dumps(dic, indent=2, sort_keys=True, ensure_ascii=False))
     roomid = str(roomid)
     print(roomid)
     HEADERS = {
@@ -32,7 +32,7 @@ def check_raffle(dic):
             resp = requests.get(
                 url % (roomid, event['raffleId']), headers=HEADERS)
             data = resp.json()
-            print(json.dumps(dic, indent=2, sort_keys=True, ensure_ascii=False))
+            # print(json.dumps(dic, indent=2, sort_keys=True, ensure_ascii=False))
             print('Enter Raffle %d: %s' % (event['raffleId'], data['msg']))
     
     # APIs = [
