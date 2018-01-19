@@ -29,6 +29,8 @@ def check_raffle(dic):
         if data['code'] < 0:
             return
         for event in data['data']:
+            if event.get('from_user') is None:
+                continue
             resp = requests.get(
                 url % (roomid, event['raffleId']), headers=HEADERS)
             data = resp.json()
