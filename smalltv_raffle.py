@@ -37,39 +37,17 @@ def check_raffle(dic):
             # print(json.dumps(dic, indent=2, sort_keys=True, ensure_ascii=False))
             print('Enter Raffle %d: %s' % (event['raffleId'], data['msg']))
     
-    # APIs = [
-    #     'http://api.live.bilibili.com/gift/v2/smalltv/', 
-    #     'http://api.live.bilibili.com/activity/v1/Raffle/',
-    #     'http://api.live.bilibili.com/lottery/v1/Storm/']
-    # for API_BASE in APIs:
-    #     resp = requests.get(API_BASE + 'check?roomid=' + roomid, headers=HEADERS)
-    #     event_lit = resp.json()
-    #     if event_lit['code'] < 0:
-    #         continue
-    #     print(json.dumps(event_lit, indent=2, sort_keys=True, ensure_ascii=False))
-    #     for event in event_lit['data']:
-    #         if event.get('from_user') is None:
-    #             continue
-    #         resp = requests.get(
-    #             API_BASE + 'join?roomid=%sraffleId=%s' % (roomid, event['raffleId']), headers=HEADERS)
-    #         data = resp.json()
-    #         print(json.dumps(data, indent=2, sort_keys=True, ensure_ascii=False))
-    #         print('Enter Raffle %d: %s' % (event['raffleId'], data['msg']))
-    
-    resp = requests.get(
-        'http://api.live.bilibili.com/gift/v2/smalltv/check?roomid=' + roomid, headers=HEADERS)
-    data = resp.json()
-    # print(json.dumps(data, indent=2, sort_keys=True, ensure_ascii=False))
-    proc_event_list(data, 'http://api.live.bilibili.com/gift/v2/smalltv/join?roomid=%s&raffleId=%s')
-    
-    resp = requests.get('http://api.live.bilibili.com/activity/v1/Raffle/check?roomid=' + roomid, headers=HEADERS)
-    data = resp.json()
-    # print(json.dumps(data, indent=2, sort_keys=True, ensure_ascii=False))
-    proc_event_list(data, 'http://api.live.bilibili.com/activity/v1/Raffle/join?roomid=%s&raffleId=%s')
-
-    resp = requests.get('http://api.live.bilibili.com/lottery/v1/Storm/check?roomid=' + roomid)
-    data = resp.json()
-    proc_event_list(data, 'http://api.live.bilibili.com/lottery/v1/Storm/join?roomid=%sraffleId=%s')
+    APIs = [
+        'http://api.live.bilibili.com/gift/v2/smalltv/', 
+        'http://api.live.bilibili.com/activity/v1/Raffle/',
+        'http://api.live.bilibili.com/lottery/v1/Storm/']
+    for API_BASE in APIs:
+        resp = requests.get(API_BASE + 'check?roomid=' + roomid, headers=HEADERS)
+        event_list = resp.json()
+        if event_list['code'] < 0:
+            continue
+        # print(json.dumps(event_list, indent=2, sort_keys=True, ensure_ascii=False))
+        proc_event_list(event_list, API_BASE + 'join?roomid=%s&raffleId=%s')
 
 
 def main():
