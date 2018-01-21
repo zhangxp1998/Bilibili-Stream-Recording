@@ -57,7 +57,7 @@ def get_stream_info(user_id):
         A json object with user's streaming info
     """
     resp = requests.get(
-        'https://api.vc.bilibili.com/user_ex/v1/user/detail?uid=%s&room[]=live_status' % str(user_id), headers=HEADERS)
+        'https://api.vc.bilibili.com/user_ex/v1/user/detail?uid=%s&room[]=live_status' % str(user_id), headers=HEADERS, timeout=5)
     data = resp.json()
     check_json_error(data)
     return data['data']
@@ -86,7 +86,7 @@ def get_stream_download_urls(stream_info):
     global HEADERS
     room_id = stream_info['room']['room_id']
     resp = requests.get(
-        'https://api.live.bilibili.com/room/v1/Room/playUrl?cid=%s&quality=4&platform=web' % str(room_id), headers=HEADERS)
+        'https://api.live.bilibili.com/room/v1/Room/playUrl?cid=%s&quality=4&platform=web' % str(room_id), headers=HEADERS, timeout=5)
     return resp.json()
 
 
@@ -117,7 +117,7 @@ def download_stream(download_url, stream_save_location):
     """
     global HEADERS
     out_file = open(stream_save_location, 'wb')
-    resp = requests.get(download_url, stream=True, headers=HEADERS, timeout=(10, 5))
+    resp = requests.get(download_url, stream=True, headers=HEADERS, timeout=5)
     file_len = 0
     last_log = datetime.now()
     last_size = ''
@@ -149,7 +149,7 @@ def get_user_name(uid):
     """
     global HEADERS
     resp = requests.get(
-        'https://api.live.bilibili.com/user/v1/User/get?uid=%s&platform=pc' % str(uid), headers=HEADERS)
+        'https://api.live.bilibili.com/user/v1/User/get?uid=%s&platform=pc' % str(uid), headers=HEADERS, timeout=5)
     data = resp.json()
     check_json_error(data)
     return data['data']['uname']
