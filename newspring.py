@@ -1,4 +1,6 @@
 import sys
+from datetime import datetime
+from time import sleep
 
 import requests
 
@@ -22,8 +24,12 @@ def main():
     session = requests.Session()
     session.headers = HEADERS
     while True:
-        data = purchase_gift(sys.argv[1], sys.argv[2], session)
-        print(data['msg'])
+        time = datetime.now()
+        if time.minute >= 59 ir time.minute <= 1
+            data = purchase_gift(sys.argv[1], sys.argv[2], session)
+            print(data['msg'])
+        else:
+            sleep(30)
 
 if __name__ == '__main__':
     main()
