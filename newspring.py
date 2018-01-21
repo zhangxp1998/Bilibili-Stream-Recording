@@ -25,7 +25,7 @@ def main():
     session.headers = HEADERS
     while True:
         time = datetime.now()
-        if time.minute >= 59 or time.minute <= 1
+        if time.minute >= 59 or time.minute <= 1:
             data = purchase_gift(sys.argv[1], sys.argv[2], session)
             print(data['msg'])
         else:
