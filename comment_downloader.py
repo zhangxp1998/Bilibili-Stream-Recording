@@ -6,8 +6,7 @@ import xml.dom.minidom
 from asyncio import open_connection, wait_for
 from datetime import datetime
 from struct import *
-
-import requests
+import aiohttp
 
 
 def download_comments(room_id, save_path):
@@ -85,16 +84,15 @@ class comment_downloader():
     async def get_chat_info(self):
         # room_id is the true room id obtained from
         # https://api.live.bilibili.com/room/v1/Room/room_init?id=
-            resp = requests.get('http://live.bilibili.com/api/player?id=cid:' + str(self._roomId), headers={
-            'Accept': '*/*',
-            'User-Agent': 'Safari/537.36',
-            'Accept-Encoding': 'gzip, deflate, br'})
-            text = resp.text
-            dom = xml.dom.minidom.parseString('<root>' + text + '</root>')
-            root = dom.documentElement
-            server = root.getElementsByTagName('dm_server')
-            port = root.getElementsByTagName('dm_port')
-            return (server[0].firstChild.data, port[0].firstChild.data)
+        HEADERS = {'Accept': '*/*','User-Agent': 'Safari/537.36','Accept-Encoding': 'gzip, deflate, br'}
+        with aiohttp.ClientSession(conn_timeout=3, read_timeout=3) as session:
+            async with session.get('http://live.bilibili.com/api/player?id=cid:' + str(self._roomId), headers=HEADERS) as resp:
+                text = await resp.text()
+                dom = xml.dom.minidom.parseString('<root>' + text + '</root>')
+                root = dom.documentElement
+                server = root.getElementsByTagName('dm_server')
+                port = root.getElementsByTagName('dm_port')
+                return (server[0].firstChild.data, port[0].firstChild.data)
 
     def close(self):
         self.connected = False
@@ -126,27 +124,30 @@ class comment_downloader():
         self._writer.write(sendbytes)
         await self._writer.drain()
 
+    def read(self, n, timeout=45):
+        return asyncio.wait_for(self._reader.read(n), timeout)
+
     async def ReceiveMessageLoop(self):
         while self.connected:
-            tmp = await self._reader.read(4)
+            tmp = await self.read(4)
             expr, = unpack('!I', tmp)
-            tmp = await self._reader.read(2)
-            tmp = await self._reader.read(2)
-            tmp = await self._reader.read(4)
+            tmp = await self.read(2)
+            tmp = await self.read(2)
+            tmp = await self.read(4)
             num, = unpack('!I', tmp)
-            tmp = await self._reader.read(4)
+            tmp = await self.read(4)
             num2 = expr - 16
 
             if num2 != 0:
                 num -= 1
                 if num == 0 or num == 1 or num == 2:
-                    tmp = await self._reader.read(4)
+                    tmp = await self.read(4)
                     num3, = unpack('!I', tmp)
                     print('房间人数为 ' + str(num3))
                     self._UserCount = num3
                     continue
                 elif num == 3 or num == 4:
-                    tmp = await self._reader.read(num2)
+                    tmp = await self.read(num2)
                     # strbytes, = unpack('!s', tmp)
                     try:  # 为什么还会出现 utf-8 decode error??????
                         messages = tmp.decode('utf-8')
@@ -155,11 +156,11 @@ class comment_downloader():
                     self.parseDanMu(messages)
                     continue
                 elif num == 5 or num == 6 or num == 7:
-                    tmp = await self._reader.read(num2)
+                    tmp = await self.read(num2)
                     continue
                 else:
                     if num != 16:
-                        tmp = await self._reader.read(num2)
+                        tmp = await self.read(num2)
                     else:
                         continue
 
