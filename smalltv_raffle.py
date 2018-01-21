@@ -32,7 +32,7 @@ def check_raffle(dic):
             if event.get('from_user') is None:
                 continue
             resp = requests.get(
-                url % (roomid, event['raffleId']), headers=HEADERS)
+                url % (roomid, event['raffleId']), headers=HEADERS, timeout=5)
             data = resp.json()
             # print(json.dumps(dic, indent=2, sort_keys=True, ensure_ascii=False))
             print('Enter Raffle %d: %s' % (event['raffleId'], data['msg']))
@@ -42,7 +42,7 @@ def check_raffle(dic):
         'http://api.live.bilibili.com/activity/v1/Raffle/',
         'http://api.live.bilibili.com/lottery/v1/Storm/']
     for API_BASE in APIs:
-        resp = requests.get(API_BASE + 'check?roomid=' + roomid, headers=HEADERS)
+        resp = requests.get(API_BASE + 'check?roomid=' + roomid, headers=HEADERS, timeout=5)
         event_list = resp.json()
         if event_list['code'] < 0:
             continue
