@@ -126,43 +126,44 @@ class comment_downloader():
 
     def read(self, n, timeout=45):
         return asyncio.wait_for(self._reader.read(n), timeout)
+    
+    async def ReceiveMessage(self):
+        tmp = await self.read(4)
+        expr, = unpack('!I', tmp)
+        tmp = await self.read(2)
+        tmp = await self.read(2)
+        tmp = await self.read(4)
+        num, = unpack('!I', tmp)
+        tmp = await self.read(4)
+        num2 = expr - 16
+
+        if num2 != 0:
+            num -= 1
+            if num == 0 or num == 1 or num == 2:
+                tmp = await self.read(4)
+                num3, = unpack('!I', tmp)
+                print('房间人数为 ' + str(num3))
+                self._UserCount = num3
+            elif num == 3 or num == 4:
+                tmp = await self.read(num2)
+                # strbytes, = unpack('!s', tmp)
+                try:  # 为什么还会出现 utf-8 decode error??????
+                    messages = tmp.decode('utf-8')
+                except:
+                    return
+                self.parseDanMu(messages)
+            elif num == 5 or num == 6 or num == 7:
+                tmp = await self.read(num2)
+            else:
+                if num != 16:
+                    tmp = await self.read(num2)
 
     async def ReceiveMessageLoop(self):
-        while self.connected:
-            tmp = await self.read(4)
-            expr, = unpack('!I', tmp)
-            tmp = await self.read(2)
-            tmp = await self.read(2)
-            tmp = await self.read(4)
-            num, = unpack('!I', tmp)
-            tmp = await self.read(4)
-            num2 = expr - 16
-
-            if num2 != 0:
-                num -= 1
-                if num == 0 or num == 1 or num == 2:
-                    tmp = await self.read(4)
-                    num3, = unpack('!I', tmp)
-                    print('房间人数为 ' + str(num3))
-                    self._UserCount = num3
-                    continue
-                elif num == 3 or num == 4:
-                    tmp = await self.read(num2)
-                    # strbytes, = unpack('!s', tmp)
-                    try:  # 为什么还会出现 utf-8 decode error??????
-                        messages = tmp.decode('utf-8')
-                    except:
-                        continue
-                    self.parseDanMu(messages)
-                    continue
-                elif num == 5 or num == 6 or num == 7:
-                    tmp = await self.read(num2)
-                    continue
-                else:
-                    if num != 16:
-                        tmp = await self.read(num2)
-                    else:
-                        continue
+        try:
+            while self.connected:
+                await self.ReceiveMessage()
+        except:
+            self.connected = False
 
     def parseDanMu(self, messages):
         try:
