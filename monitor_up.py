@@ -127,6 +127,9 @@ def download_stream(download_url, stream_save_location):
             out_file.write(buf)
             out_file.flush()
             file_len += len(buf)
+            # Stop if file size exceeds 3 GB
+            if file_len > 3 * (1<<30):
+                return
             delta = datetime.now() - last_log
             size = sizeof_fmt(file_len)
             # print file size every 3 second
