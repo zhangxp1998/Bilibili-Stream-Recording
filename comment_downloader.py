@@ -6,24 +6,30 @@ import xml.dom.minidom
 from asyncio import open_connection, wait_for
 from datetime import datetime
 from struct import *
+
 import aiohttp
 
 
 def download_comments(room_id, save_path):
-    danmuji = comment_downloader(room_id, save_path)
-    tasks = [
-        danmuji.connectServer(),
-        danmuji.HeartbeatLoop()
-    ]
-    loop = asyncio.get_event_loop()
-    try:
-        loop.run_until_complete(asyncio.wait(tasks))
-    except KeyboardInterrupt:
-        print('Keyboard Interrupt received...')
-        danmuji.close()
+    while True:
+        try:
+            danmuji = comment_downloader(room_id, save_path)
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(danmuji.connectServer())
+            tasks = [
+                danmuji.ReceiveMessageLoop(),
+                danmuji.HeartbeatLoop()
+            ]
+            loop.run_until_complete(asyncio.wait(tasks))
+        except KeyboardInterrupt:
+            print('Keyboard Interrupt received...')
+            danmuji.close()
 
-        for task in asyncio.Task.all_tasks():
-            task.cancel()
+            for task in asyncio.Task.all_tasks():
+                task.cancel()
+            return
+        except:
+            pass
 
 
 def write_xml_header(save_path):
@@ -79,7 +85,7 @@ class comment_downloader():
         if await self.SendJoinChannel(self._roomId):
             self.connected = True
             print('Connected!')
-            await self.ReceiveMessageLoop()
+            #await self.ReceiveMessageLoop()
 
     async def get_chat_info(self):
         # room_id is the true room id obtained from

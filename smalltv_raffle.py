@@ -54,11 +54,13 @@ def main():
     url = sys.argv[1]
     room_id = get_room_id(extract_short_roomid(url))
     danmuji = comment_downloader(room_id, '/dev/null', check_raffle)
+    
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(danmuji.connectServer())
     tasks = [
-        danmuji.connectServer(),
+        danmuji.ReceiveMessageLoop(),
         danmuji.HeartbeatLoop()
     ]
-    loop = asyncio.get_event_loop()
     loop.run_until_complete(asyncio.wait(tasks))
 
 if __name__ == '__main__':
