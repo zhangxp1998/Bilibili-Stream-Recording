@@ -3,3 +3,4 @@ storage.json
 client_id.json
 *.ass
 *.xml
+*.log
