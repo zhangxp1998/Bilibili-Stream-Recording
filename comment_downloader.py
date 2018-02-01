@@ -106,9 +106,6 @@ class comment_downloader():
         write_xml_footer(self._save_path)
 
     async def HeartbeatLoop(self):
-        while not self.connected:
-            await asyncio.sleep(0.5)
-
         while self.connected:
             await self.SendSocketData(0, 16, self._protocolversion, 2, 1, "[object object]")
             await asyncio.sleep(30)
