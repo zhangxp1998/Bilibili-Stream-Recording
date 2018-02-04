@@ -1,18 +1,11 @@
+import asyncio
 import sys
 from datetime import datetime
 from time import sleep
 
-import requests
+import aiohttp
 
-
-def purchase_gift(award_id, count, session):
-    PAYLOAD = {'award_id': award_id, 'exchange_num': int(count)}
-    resp = session.post('http://api.live.bilibili.com/activity/v1/NewSpring/redBagExchange', data=PAYLOAD, headers={'Content-Type': 'application/x-www-form-urlencoded'})
-    data = resp.json()
-    return data
-
-
-def main():
+async def main():
     if len(sys.argv) < 4:
         print('Usage: %s award_id count cookie' % (sys.argv[0], ))
         sys.exit(0)
@@ -21,15 +14,23 @@ def main():
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/604.4.7 (KHTML, like Gecko) Version/11.0.2 Safari/604.4.7',
         'Cookie': sys.argv[3],
         'Accept-Encoding': 'gzip, deflate, br'}
-    session = requests.Session()
-    session.headers = HEADERS
-    while True:
-        time = datetime.now()
-        if time.minute >= 59 or time.minute <= 1:
-            data = purchase_gift(sys.argv[1], sys.argv[2], session)
-            print(data['msg'])
-        else:
-            sleep(30)
+    award_id = sys.argv[1]
+    count = int(sys.argv[2])
+
+    async with aiohttp.ClientSession(headers=HEADERS) as session:
+        while True:
+            time = datetime.now()
+            if time.minute >= 59 or time.minute <= 1:
+                PAYLOAD = {'award_id': award_id, 'exchange_num': int(count)}
+                resp = await session.post('http://api.live.bilibili.com/activity/v1/NewSpring/redBagExchange', data=PAYLOAD, headers={'Content-Type': 'application/x-www-form-urlencoded'})
+                data = await resp.json()
+                if data['code'] >= 0:
+                    print(data['msg'])
+            else:
+                await asyncio.sleep(30.0)
+            
 
 if __name__ == '__main__':
-    main()
+    tasks = [main() for i in range(20)]
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(asyncio.wait(tasks))
