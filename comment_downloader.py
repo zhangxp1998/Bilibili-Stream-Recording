@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import asyncio
 import json
+import os
 import xml.dom.minidom
 from asyncio import open_connection, wait_for
 from datetime import datetime
@@ -33,6 +34,8 @@ def download_comments(room_id, save_path):
 
 
 def write_xml_header(save_path):
+    if os.path.isfile(save_path):
+        return
     with open(save_path, 'wb') as out_file:
         out_file.write(b'<?xml version="1.0" encoding="UTF-8"?><i><chatserver>chat.bilibili.com</chatserver><chatid>0</chatid><mission>0</mission><maxlimit>0</maxlimit><source>k-v</source>\n')
 
