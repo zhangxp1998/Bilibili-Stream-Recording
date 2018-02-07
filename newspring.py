@@ -23,22 +23,21 @@ async def main():
     async with aiohttp.ClientSession(headers=HEADERS) as session:
         while True:
             time = datetime.now()
-            if (time.minute >= 59 and time.second >= 30) or (time.minute <= 0 and time.second <= 30):
+            if (time.minute >= 59 and time.second >= 45) or (time.minute <= 0 and time.second <= 15):
                 PAYLOAD = {'award_id': award_id, 'exchange_num': int(count)}
                 resp = await session.post(EXCHANGE_URL, data=PAYLOAD)
                 try:
                     data = await resp.json()
-                    if data['code'] >= 0:
-                        print(data['msg'])
+                    print(data['msg'])
                 except client_exceptions.ContentTypeError:
                     print(await resp.text())
             else:
-                target = datetime(time.year, time.month, time.day, time.hour, 59, 30, 0)
+                target = datetime(time.year, time.month, time.day, time.hour, 59, 45, 0)
                 delta = target - datetime.now()
                 await asyncio.sleep(delta.total_seconds())
             
 
 if __name__ == '__main__':
-    tasks = [main() for i in range(1)]
+    tasks = [main() for i in range(2)]
     loop = asyncio.get_event_loop()
     loop.run_until_complete(asyncio.wait(tasks))
