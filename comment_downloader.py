@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import xml.dom.minidom
+import asyncio
 from asyncio import open_connection, wait_for
 from datetime import datetime
 from struct import *
@@ -177,7 +178,8 @@ class comment_downloader():
         except:  # 有些情况会 jsondecode 失败，未细究，可能平台导致
             return
         if self.callback is not None:
-            return self.callback(dic)
+            asyncio.get_event_loop().create_task(self.callback(dic))
+            return
 
         cmd = dic['cmd']
         if cmd == 'LIVE':

@@ -12,7 +12,7 @@
             "pythonPath": "${config:python.pythonPath}",
             "program": "${file}",
             "cwd": "${workspaceFolder}",
-            "args": ["https://live.bilibili.com/1017", "l=v; fts=1497461785; buvid3=A0C9138D-DD1C-4457-889C-49252027E0DC15603infoc; rpdid=oiwxpqmslldoplmpxomxw; finger=14bc3c4e; sid=a0s4px9j; UM_distinctid=160e61cf74016b-0410cf0e0f42e2-32677403-fa000-160e61cf741a60; DedeUserID=43158402; DedeUserID__ckMd5=b960137f851714c5; SESSDATA=7f6b806c%2C1518533100%2C58d25b7b; bili_jct=a6f100a9ad8b6582c4e8f6159ed4a936; LIVE_BUVID=6d70da58bd86ee9497f630fb027fcbc9; LIVE_BUVID__ckMd5=411eb41bb21339a8; pgv_pvi=4655891456; im_local_unread_43158402=0; _dfcaptcha=e2d3d7fd69afc4e0181f79810ddffd11; Hm_lvt_8a6e55dbd2870f0f5bc9194cddf32a02=1516238800,1516251390,1516281646,1516285703; Hm_lpvt_8a6e55dbd2870f0f5bc9194cddf32a02=1516286104"],
+            "args": ["cookies.txt"],
             "env": {},
             "envFile": "${workspaceFolder}/.env",
             "debugOptions": [
