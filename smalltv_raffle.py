@@ -3,13 +3,11 @@ from __future__ import print_function
 import asyncio
 import json
 import sys
-
+import re
 import aiohttp
 
 from comment_downloader import comment_downloader
 from test_download_comments import extract_short_roomid, get_room_id
-
-COOKIES = []
 
 def reload_cookies(filename, default):
     with open(filename, 'r') as f:
@@ -24,7 +22,7 @@ async def check_raffle(dic):
     # print(json.dumps(dic, indent=2, sort_keys=True, ensure_ascii=False))
     roomid = str(roomid)
     print(roomid)
-    for cookie in COOKIES:
+    for uid, cookie in COOKIES.items():
         HEADERS = {
             'Accept-Encoding': 'gzip, deflate, br',
             'Referer': dic['url'],
@@ -39,25 +37,32 @@ async def check_raffle(dic):
                 for event in data['data']:
                     if event.get('from_user') is None:
                         continue
-                    async with session.get(url % (roomid, event['raffleId'])) as resp:
-                        data = await resp.json()
-                        print('Enter Raffle %d: %s' % (event['raffleId'], data['msg']))
+                    raffleId = event['raffleId']
+                    resps = await asyncio.gather(session.get(url % (roomid, raffleId)), session.get('https://api.live.bilibili.com/user/v1/User/get?uid='+uid))
+                    jsons = await asyncio.gather(*[x.json() for x in resps])
+                    raffle_data = jsons[0]
+                    user_data = jsons[1]
+                    print('%s Enter Raffle %s : %s' % (user_data['data']['uname'], raffleId, raffle_data['msg']))
+                    # async with session.get(url % (roomid, raffleId)) as resp:
+                    #     data = await resp.json()
+                    #     print('Enter Raffle %d: %s' % (raffleId, data['msg']))
             
             APIs = [
                 'http://api.live.bilibili.com/gift/v2/smalltv/', 
                 'http://api.live.bilibili.com/activity/v1/Raffle/',
                 'http://api.live.bilibili.com/lottery/v1/Storm/']
             for API_BASE in APIs:
-                resp = session.get(API_BASE + 'check?roomid=' + roomid)
-                event_list = resp.json()
-                if event_list['code'] < 0:
-                    continue
-                # print(json.dumps(event_list, indent=2, sort_keys=True, ensure_ascii=False))
-                asyncio.get_event_loop().create_task(proc_event_list(event_list, API_BASE + 'join?roomid=%s&raffleId=%s'))
+                async with session.get(API_BASE + 'check?roomid=' + roomid) as resp:
+                    # resp = await session.get(API_BASE + 'check?roomid=' + roomid)
+                    event_list = await resp.json()
+                    if event_list['code'] < 0:
+                        continue
+                    # print(json.dumps(event_list, indent=2, sort_keys=True, ensure_ascii=False))
+                    asyncio.get_event_loop().create_task(proc_event_list(event_list, API_BASE + 'join?roomid=%s&raffleId=%s'))
 
 
 def main():
-    room_id = 66688
+    room_id = 1017
     danmuji = comment_downloader(room_id, '/dev/null', check_raffle)
     
     loop = asyncio.get_event_loop()
@@ -72,7 +77,13 @@ if __name__ == '__main__':
     if len(sys.argv) < 2:
         print(sys.argv[0], '<cookie filename>')
         sys.exit(0)
-    COOKIES = reload_cookies(sys.argv[1], [])
+    arr = reload_cookies(sys.argv[1], [])
+    COOKIES = {}
+    p = re.compile(r'DedeUserID=(\d+)')
+    for cookie in arr:
+        m = p.search(cookie)
+        COOKIES[m.group(1)] = cookie
+
     while True:
         try:
             main()
