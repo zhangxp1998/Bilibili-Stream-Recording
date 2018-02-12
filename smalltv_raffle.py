@@ -7,7 +7,6 @@ import re
 import aiohttp
 from monitor_up import get_user_name
 from comment_downloader import comment_downloader
-from test_download_comments import extract_short_roomid, get_room_id
 
 def reload_cookies(filename, default):
     with open(filename, 'r') as f:

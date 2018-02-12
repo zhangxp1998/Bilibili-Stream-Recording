@@ -12,22 +12,24 @@ from struct import *
 import aiohttp
 
 
-def download_comments(room_id, save_path):
+async def download_comments(room_id, save_path):
     while True:
         try:
             danmuji = comment_downloader(room_id, save_path)
             loop = asyncio.get_event_loop()
-            loop.run_until_complete(danmuji.connectServer())
+            await danmuji.connectServer()
+            # loop.run_until_complete(danmuji.connectServer())
             tasks = [
                 danmuji.ReceiveMessageLoop(),
                 danmuji.HeartbeatLoop()
             ]
-            loop.run_until_complete(asyncio.wait(tasks))
+            await asyncio.wait(tasks)
+            # loop.run_until_complete(asyncio.wait(tasks))
         except KeyboardInterrupt:
             print('Keyboard Interrupt received...')
             danmuji.close()
 
-            for task in asyncio.Task.all_tasks():
+            for task in tasks:
                 task.cancel()
             return
         except:
