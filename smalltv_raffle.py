@@ -5,7 +5,7 @@ import json
 import sys
 import re
 import aiohttp
-
+from monitor_up import get_user_name
 from comment_downloader import comment_downloader
 from test_download_comments import extract_short_roomid, get_room_id
 
@@ -22,7 +22,7 @@ async def check_raffle(dic):
     # print(json.dumps(dic, indent=2, sort_keys=True, ensure_ascii=False))
     roomid = str(roomid)
     print(roomid)
-    for uid, cookie in COOKIES.items():
+    for uname, cookie in COOKIES.items():
         HEADERS = {
             'Accept-Encoding': 'gzip, deflate, br',
             'Referer': dic['url'],
@@ -38,11 +38,10 @@ async def check_raffle(dic):
                     if event.get('from_user') is None:
                         continue
                     raffleId = event['raffleId']
-                    resps = await asyncio.gather(session.get(url % (roomid, raffleId)), session.get('https://api.live.bilibili.com/user/v1/User/get?uid='+uid))
-                    jsons = await asyncio.gather(*[x.json() for x in resps])
-                    raffle_data = jsons[0]
-                    user_data = jsons[1]
-                    print('%s Enter Raffle %s : %s' % (user_data['data']['uname'], raffleId, raffle_data['msg']))
+                    async with session.get(url % (roomid, raffleId)) as resp:
+                        data = await resp.json()
+                        print('%s Enter Raffle %s : %s' % (uname, raffleId, data['msg']))
+                    
                     # async with session.get(url % (roomid, raffleId)) as resp:
                     #     data = await resp.json()
                     #     print('Enter Raffle %d: %s' % (raffleId, data['msg']))
@@ -58,7 +57,7 @@ async def check_raffle(dic):
                     if event_list['code'] < 0:
                         continue
                     # print(json.dumps(event_list, indent=2, sort_keys=True, ensure_ascii=False))
-                    asyncio.get_event_loop().create_task(proc_event_list(event_list, API_BASE + 'join?roomid=%s&raffleId=%s'))
+                    await proc_event_list(event_list, API_BASE + 'join?roomid=%s&raffleId=%s')
 
 
 def main():
@@ -82,7 +81,9 @@ if __name__ == '__main__':
     p = re.compile(r'DedeUserID=(\d+)')
     for cookie in arr:
         m = p.search(cookie)
-        COOKIES[m.group(1)] = cookie
+        uname = get_user_name(m.group(1))
+        COOKIES[uname] = cookie
+        print(uname, m.group(1), cookie)
 
     while True:
         try:
