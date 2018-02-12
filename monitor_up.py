@@ -169,11 +169,7 @@ def generate_save_path(stream_info):
     return uid + "/" + datetime.now().strftime('%b %d %Y %H:%M:%S')
 
 
-pool = Pool(processes=2)
-
-
-def async_upload_delete(file_path):
-    global pool
+def async_upload_delete(file_path, pool):
     pool.apply_async(
         func=google_drive.upload_to_google_drive,
         args=(file_path, True),
@@ -190,6 +186,7 @@ def main():
     # Parse the users's UID
     url = sys.argv[1]
     space_id = extract_user_id(url)
+    pool = Pool(processes=2)
     while True:
         # obtain streamming information about this user
         stream_info = get_stream_info(space_id)
@@ -227,7 +224,7 @@ def main():
             with open(meta_info_path, 'w') as outfile:
                 json.dump(stream_info, outfile, indent=2,
                           sort_keys=True, ensure_ascii=False)
-            async_upload_delete(meta_info_path)
+            async_upload_delete(meta_info_path, pool)
 
             # wait for stream to end
             p.join()
@@ -244,8 +241,8 @@ def main():
                 continue
 
             # upload the video and comment file, then delete both files
-            async_upload_delete(comment_path)
-            async_upload_delete(video_path)
+            async_upload_delete(comment_path, pool)
+            async_upload_delete(video_path, pool)
         else:
             print("%s is not streaming..." % (get_user_name(space_id),))
             time.sleep(30)
