@@ -8,6 +8,7 @@ import os
 import re
 import sys
 
+import apiclient
 from apiclient import discovery
 from googleapiclient.http import MediaFileUpload
 from httplib2 import Http
@@ -72,7 +73,17 @@ def upload_to_google_drive(file_path, remove=False):
     response = None
     last_percent = 0
     while response is None:
-        status, response = uploader.next_chunk()
+        try:
+            status, response = uploader.next_chunk()
+        except apiclient.errors.HttpError as e:
+            if e.resp.status in [404]:
+                # Start the upload all over again.
+                return upload_to_google_drive(file_path, remove)
+            elif e.resp.status in [500, 502, 503, 504]:
+                continue
+            else:
+                print("Upload %s failed!" % (file_path, ))
+                return
         #Print the progress if the percentage changed
         if status:
             percent = int(status.progress() * 100)
