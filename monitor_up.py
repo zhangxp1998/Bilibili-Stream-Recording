@@ -1,7 +1,6 @@
 from __future__ import print_function
 
 import json
-import logging
 import os
 import re
 import sys
@@ -10,6 +9,7 @@ from datetime import datetime
 from threading import Thread
 from random import random
 import asyncio
+from asyncio import Task
 import aiohttp
 import requests
 import traceback
@@ -163,20 +163,9 @@ def generate_save_path(stream_info):
     return uid + "/" + datetime.now().strftime('%b %d %Y %H:%M:%S')
 
 
-def main(HEADERS={}):
-    if len(sys.argv) < 2:
-        sys.exit(0)
-    if len(sys.argv) == 3:
-        logging.basicConfig(filename=sys.argv[2])
-    HEADERS = {
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/604.4.7 (KHTML, like Gecko) Version/11.0.2 Safari/604.4.7',
-        'Accept-Encoding': 'gzip, deflate, br'
-    }
+async def main(url, HEADERS={}):
     # Parse the users's UID
-    url = sys.argv[1]
     space_id = extract_user_id(url)
-    loop = asyncio.get_event_loop()
     while True:
         # obtain streamming information about this user
         stream_info = get_stream_info(space_id, HEADERS)
@@ -194,20 +183,19 @@ def main(HEADERS={}):
 
             # Download the video stream asychronously
             video_path = save_path + '.flv'
-            video_task = loop.create_task(download_stream(default_url, video_path, HEADERS))
+            video_task = Task(download_stream(default_url, video_path, HEADERS))
         
             print('Start downloading', video_path)
 
             # Download the comment stream asychronously
             comment_path = save_path + '.xml'
-            comment_task = loop.create_task(download_comments(stream_info['room']['room_id'], comment_path))
+            comment_task = Task(download_comments(stream_info['room']['room_id'], comment_path))
             print('Start downloading', comment_path)
 
             # wait for stream to end
-            loop.run_until_complete(video_task)
+            await video_task
             # # if the stream ends, just kill the comment downloader
             comment_task.cancel()
-            write_xml_footer(comment_path)
 
             if os.path.getsize(video_path) == 0:
                 os.remove(video_path)
@@ -228,15 +216,26 @@ def main(HEADERS={}):
 
         else:
             print("%s is not streaming..." % (get_user_name(space_id, HEADERS),))
-            time.sleep(30)
+            await asyncio.sleep(30)
 
-
-if __name__ == '__main__':
-    google_drive.google_api_auth()
+async def handle_url(url, HEADERS):
     while True:
         try:
-            main()
+            await main(url, HEADERS)
         except KeyboardInterrupt:
             break
         except:
             pass
+
+if __name__ == '__main__':
+    google_drive.google_api_auth()
+    HEADERS = {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/604.4.7 (KHTML, like Gecko) Version/11.0.2 Safari/604.4.7',
+        'Accept-Encoding': 'gzip, deflate, br'
+    }
+    if len(sys.argv) < 2:
+        print(sys.argv[0], '')
+    tasks = [handle_url(url, HEADERS) for url in sys.argv[1:]]
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(asyncio.wait(tasks))
