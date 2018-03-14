@@ -13,6 +13,8 @@ def reload_cookies(filename, default):
         return [x.strip() for x in f.readlines()]
     return default
 
+async def check_raffle_result():
+    pass
 
 async def check_raffle(dic):
     roomid = dic.get('real_roomid')

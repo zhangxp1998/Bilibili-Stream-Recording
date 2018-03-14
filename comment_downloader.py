@@ -73,6 +73,10 @@ class comment_downloader():
         self._roomId = room_id
         self._roomId = int(self._roomId)
         self._save_path = save_path
+        if save_path.endswith('xml'):
+            self._gift_path = save_path[:-3] + 'txt'
+        else:
+            self._gift_path = '/dev/null'
         self._start_time = datetime.now()
         self.TURN_WELCOME = True
         self.TURN_GIFT = True
@@ -213,9 +217,14 @@ class comment_downloader():
             Giftrcost = dic['data']['rcost']
             GiftNum = dic['data']['num']
             try:
-                print('%s 送出了 %d 个 %s' % (GiftUser, GiftNum, GiftName))
-            except:
-                pass
+                msg = '%s 送出了 %d 个 %s' % (GiftUser, GiftNum, GiftName)
+                if  GiftName == '辣条':
+                    return
+                with open(self._gift_path, 'ab') as out_file:
+                    out_file.write(('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + '] ' + msg + '\n').encode('UTF-8'))
+                print(msg)
+            except Exception as e:
+                print(e)
             return
         elif cmd == 'WELCOME' and self.TURN_WELCOME:
             commentUser = dic['data']['uname']

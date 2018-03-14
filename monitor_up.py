@@ -194,6 +194,7 @@ async def main(url, HEADERS={}):
 
             # wait for stream to end
             await video_task
+            print('Download thread terminated')
             # # if the stream ends, just kill the comment downloader
             comment_task.cancel()
 
@@ -213,7 +214,8 @@ async def main(url, HEADERS={}):
             # upload the video and comment file, then delete both files
             Thread(target=google_drive.upload_to_google_drive, args=(comment_path, True)).start()
             Thread(target=google_drive.upload_to_google_drive, args=(video_path, True)).start()
-
+            if os.path.isfile(save_path + '.txt'):
+                Thread(target=google_drive.upload_to_google_drive, args=(save_path+'.txt', True)).start()
         else:
             print("%s is not streaming..." % (get_user_name(space_id, HEADERS),))
             await asyncio.sleep(30)
