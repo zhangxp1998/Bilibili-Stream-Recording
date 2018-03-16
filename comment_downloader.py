@@ -7,7 +7,7 @@ import xml.dom.minidom
 import asyncio
 from asyncio import open_connection, wait_for
 from datetime import datetime
-from struct import *
+from struct import pack, unpack
 
 import aiohttp
 
@@ -25,7 +25,7 @@ async def download_comments(room_id, save_path):
             ]
             await asyncio.wait(tasks)
             # loop.run_until_complete(asyncio.wait(tasks))
-        except (KeyboardInterrupt, asyncio.CancelledError):
+        except (KeyboardInterrupt, asyncio.CancelledError, asyncio.TimeoutError):
             print('Closing...')
             danmuji.close()
 
