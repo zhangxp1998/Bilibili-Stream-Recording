@@ -20,8 +20,8 @@ async def download_comments(room_id, save_path):
             await danmuji.connectServer()
             # loop.run_until_complete(danmuji.connectServer())
             tasks = [
-                danmuji.ReceiveMessageLoop(),
-                danmuji.HeartbeatLoop()
+                asyncio.Task(danmuji.ReceiveMessageLoop()),
+                asyncio.Task(danmuji.HeartbeatLoop())
             ]
             await asyncio.wait(tasks)
             # loop.run_until_complete(asyncio.wait(tasks))
