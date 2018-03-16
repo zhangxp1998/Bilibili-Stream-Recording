@@ -189,7 +189,7 @@ async def main(url, HEADERS={}):
 
             # Download the comment stream asychronously
             comment_path = save_path + '.xml'
-            comment_task = Task(download_comments(stream_info['room']['room_id'], comment_path))
+            comment_task = Task(download_comments(stream_info['room']['room_id'], comment_path, save_path + '.txt'))
             print('Start downloading', comment_path)
 
             # wait for stream to end

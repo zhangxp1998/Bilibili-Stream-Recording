@@ -4,19 +4,23 @@ from threading import Thread
 import sys
 import google_drive
 
-INTERVAL = 60*60*24
+INTERVAL = 60
 
 async def main(room_id):
     while True:
         prefix =  'gift-log'
         if not os.path.exists(prefix):
             os.makedirs(prefix)
-        comment_path = prefix + '/' + '[' + room_id + '] ' + datetime.now().strftime('%Y-%m-%d %H:%M') + '.xml'
+        path = prefix + '/' + '[' + room_id + '] ' + datetime.now().strftime('%Y-%m-%d %H:%M')
+        comment_path = path + '.xml'
+        gift_path = path + '.txt'
         try:
-            await asyncio.wait_for(download_comments(room_id, comment_path), timeout=INTERVAL)
+            await asyncio.wait_for(download_comments(room_id, comment_path, gift_path), timeout=INTERVAL)
         except asyncio.TimeoutError:
             pass
         Thread(target=google_drive.upload_to_google_drive, args=(comment_path, True)).start()
+        if os.path.isfile(gift_path):
+            Thread(target=google_drive.upload_to_google_drive, args=(gift_path, True)).start()
 
 
 if __name__ == '__main__':

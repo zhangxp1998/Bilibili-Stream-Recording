@@ -12,11 +12,10 @@ from struct import pack, unpack
 import aiohttp
 
 
-async def download_comments(room_id, save_path):
+async def download_comments(room_id, save_path, gift_path='/dev/null'):
     while True:
         try:
-            danmuji = comment_downloader(room_id, save_path)
-            loop = asyncio.get_event_loop()
+            danmuji = comment_downloader(room_id, save_path, gift_path)
             await danmuji.connectServer()
             # loop.run_until_complete(danmuji.connectServer())
             tasks = [
@@ -60,7 +59,7 @@ def write_xml_footer(save_path):
         out_file.write(b'</i>\n')
 
 class comment_downloader():
-    def __init__(self, room_id, save_path='test.xml', listener_func=None):
+    def __init__(self, room_id, save_path='test.xml', gift_path = 'test.txt', listener_func=None):
         self._CIDInfoUrl = 'http://live.bilibili.com/api/player?id=cid:'
         self._roomId = 0
         self._ChatPort = 788
@@ -73,10 +72,7 @@ class comment_downloader():
         self._roomId = room_id
         self._roomId = int(self._roomId)
         self._save_path = save_path
-        if save_path.endswith('xml'):
-            self._gift_path = save_path[:-3] + 'txt'
-        else:
-            self._gift_path = '/dev/null'
+        self._gift_path = gift_path
         self._start_time = datetime.now()
         self.TURN_WELCOME = True
         self.TURN_GIFT = True
