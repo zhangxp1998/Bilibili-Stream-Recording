@@ -4,7 +4,7 @@ from threading import Thread
 import sys
 import google_drive
 
-INTERVAL = 5
+INTERVAL = 60*60*24
 
 async def main(room_id):
     while True:
