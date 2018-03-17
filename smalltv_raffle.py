@@ -125,7 +125,7 @@ if __name__ == '__main__':
         m = p.search(cookie)
         uid = m.group(1)
         uname = get_user_name(uid)
-        USER_LIST[uid] = {'uname': uname, 'cookie': cookie, 'log_file': LOG_DIR + '/' + time_of_day + '.txt'}
+        USER_LIST[uid] = {'uname': uname, 'cookie': cookie, 'log_file': '%s/[%s] %s' % (LOG_DIR, uid, time_of_day)}
         print(uname, uid, cookie)
 
     while True:
