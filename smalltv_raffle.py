@@ -18,14 +18,16 @@ def reload_cookies(filename, default):
     return default
 
 async def check_raffle_result(headers, roomId, raffleId, time_left):
-    print("Sleeping for %d second before checking result" % (time_left, ))
     roomId = str(roomId)
     raffleId = str(raffleId)
-    await asyncio.sleep(int(time_left)+1)
+    await asyncio.sleep(int(time_left)+60)
     async with aiohttp.ClientSession(headers=headers, read_timeout=10, conn_timeout=5) as session:
         async with session.get("http://api.live.bilibili.com/activity/v1/Raffle/notice?roomid=%s&raffleId=%s" % (roomId, raffleId)) as resp:
             data = await resp.json()
-            print(data['msg'])
+            if(data['code'] >= 0):
+                print("%s x %d" % (data['data']['gift_name'], data['data']['gift_num']))
+            else:
+                print(data['msg'])
 
 
 async def check_raffle(dic):
@@ -44,7 +46,7 @@ async def check_raffle(dic):
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/604.4.7 (KHTML, like Gecko) Version/11.0.2 Safari/604.4.7',
             'Accept': 'application/json, text/plain, */*'
         }
-        async with aiohttp.ClientSession(headers=HEADERS, read_timeout=5, conn_timeout=5) as session:
+        async with aiohttp.ClientSession(headers=HEADERS, read_timeout=10, conn_timeout=5) as session:
             async def proc_event_list(data, url):
                 if data['code'] < 0:
                     return
@@ -58,8 +60,8 @@ async def check_raffle(dic):
                         if(data['code'] >= 0):
                             loop.create_task(check_raffle_result(HEADERS, roomid, raffleId, event['time']))
 
-                    
-            
+
+
             for API_BASE in APIs:
                 async with session.get(API_BASE + 'check?roomid=' + roomid) as resp:
                     # resp = await session.get(API_BASE + 'check?roomid=' + roomid)
