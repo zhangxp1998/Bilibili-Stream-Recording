@@ -7,14 +7,26 @@ import re
 import aiohttp
 from monitor_up import get_user_name
 from comment_downloader import comment_downloader
+APIs = [
+            'http://api.live.bilibili.com/gift/v2/smalltv/', 
+            'http://api.live.bilibili.com/activity/v1/Raffle/',
+            'http://api.live.bilibili.com/lottery/v1/Storm/']
 
 def reload_cookies(filename, default):
     with open(filename, 'r') as f:
         return [x.strip() for x in f.readlines()]
     return default
 
-async def check_raffle_result():
-    pass
+async def check_raffle_result(headers, roomId, raffleId, time_left):
+    print("Sleeping for %d second before checking result" % (time_left, ))
+    roomId = str(roomId)
+    raffleId = str(raffleId)
+    await asyncio.sleep(int(time_left)+1)
+    async with aiohttp.ClientSession(headers=headers, read_timeout=10, conn_timeout=5) as session:
+        async with session.get("http://api.live.bilibili.com/activity/v1/Raffle/notice?roomid=%s&raffleId=%s" % (roomId, raffleId)) as resp:
+            data = await resp.json()
+            print(data['msg'])
+
 
 async def check_raffle(dic):
     roomid = dic.get('real_roomid')
@@ -23,6 +35,7 @@ async def check_raffle(dic):
     # print(json.dumps(dic, indent=2, sort_keys=True, ensure_ascii=False))
     roomid = str(roomid)
     print(roomid)
+    loop = asyncio.get_event_loop()
     for uname, cookie in COOKIES.items():
         HEADERS = {
             'Accept-Encoding': 'gzip, deflate, br',
@@ -42,15 +55,11 @@ async def check_raffle(dic):
                     async with session.get(url % (roomid, raffleId)) as resp:
                         data = await resp.json()
                         print('%s Enter Raffle %s : %s' % (uname, raffleId, data['msg']))
+                        if(data['code'] >= 0):
+                            loop.create_task(check_raffle_result(HEADERS, roomid, raffleId, event['time']))
+
                     
-                    # async with session.get(url % (roomid, raffleId)) as resp:
-                    #     data = await resp.json()
-                    #     print('Enter Raffle %d: %s' % (raffleId, data['msg']))
             
-            APIs = [
-                'http://api.live.bilibili.com/gift/v2/smalltv/', 
-                'http://api.live.bilibili.com/activity/v1/Raffle/',
-                'http://api.live.bilibili.com/lottery/v1/Storm/']
             for API_BASE in APIs:
                 async with session.get(API_BASE + 'check?roomid=' + roomid) as resp:
                     # resp = await session.get(API_BASE + 'check?roomid=' + roomid)
