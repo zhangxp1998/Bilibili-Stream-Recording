@@ -2,32 +2,51 @@ from __future__ import print_function
 
 import asyncio
 import json
-import sys
+import os
 import re
+import sys
+from datetime import datetime
+from threading import Thread
+
 import aiohttp
-from monitor_up import get_user_name
+
+import google_drive
 from comment_downloader import comment_downloader
+from monitor_up import get_user_name
+
 APIs = [
             'http://api.live.bilibili.com/gift/v2/smalltv/', 
             'http://api.live.bilibili.com/activity/v1/Raffle/',
             'http://api.live.bilibili.com/lottery/v1/Storm/']
+
+LOG_DIR = 'raffle-log'
 
 def reload_cookies(filename, default):
     with open(filename, 'r') as f:
         return [x.strip() for x in f.readlines()]
     return default
 
-async def check_raffle_result(headers, roomId, raffleId, time_left):
+def get_uid_from_cookie(cookie):
+    p = re.compile(r'DedeUserID=(\d+)')
+    m = p.search(cookie)
+    return m.group(1)
+
+async def check_raffle_result(headers, log_file, roomId, raffleId, time_left):
     roomId = str(roomId)
     raffleId = str(raffleId)
     await asyncio.sleep(int(time_left)+60)
     async with aiohttp.ClientSession(headers=headers, read_timeout=10, conn_timeout=5) as session:
         async with session.get("http://api.live.bilibili.com/activity/v1/Raffle/notice?roomid=%s&raffleId=%s" % (roomId, raffleId)) as resp:
             data = await resp.json()
+            if not os.path.exists(LOG_DIR):
+                os.mkdir(LOG_DIR)
             if(data['code'] >= 0):
-                print("%s x %d" % (data['data']['gift_name'], data['data']['gift_num']))
+                # if data['data']['gift_name'] == '辣条':
+                #     return
+                with open(log_file, 'a') as log_file:
+                    print("%s x %d" % (data['data']['gift_name'], data['data']['gift_num']), file=log_file)
             else:
-                print(data['msg'])
+                print(uname, data['msg'])
 
 
 async def check_raffle(dic):
@@ -38,7 +57,10 @@ async def check_raffle(dic):
     roomid = str(roomid)
     print(roomid)
     loop = asyncio.get_event_loop()
-    for uname, cookie in COOKIES.items():
+    for _, user_data in USER_LIST.items():
+        cookie = user_data['cookie']
+        uname = user_data['uname']
+        log_file = user_data['log_file']
         HEADERS = {
             'Accept-Encoding': 'gzip, deflate, br',
             'Referer': dic['url'],
@@ -58,7 +80,7 @@ async def check_raffle(dic):
                         data = await resp.json()
                         print('%s Enter Raffle %s : %s' % (uname, raffleId, data['msg']))
                         if(data['code'] >= 0):
-                            loop.create_task(check_raffle_result(HEADERS, roomid, raffleId, event['time']))
+                            loop.create_task(check_raffle_result(HEADERS, log_file, roomid, raffleId, event['time']))
 
 
 
@@ -72,7 +94,7 @@ async def check_raffle(dic):
                     await proc_event_list(event_list, API_BASE + 'join?roomid=%s&raffleId=%s')
 
 
-def main():
+def main(USER_LIST):
     room_id = 1017
     danmuji = comment_downloader(room_id, save_path='/dev/null', gift_path='/dev/null', listener_func=check_raffle)
     
@@ -82,24 +104,33 @@ def main():
         danmuji.ReceiveMessageLoop(),
         danmuji.HeartbeatLoop()
     ]
-    loop.run_until_complete(asyncio.wait(tasks))
+    loop.run_until_complete(asyncio.wait_for(asyncio.wait(tasks), 60*5))
+    for user_data in USER_LIST.values():
+        log_file = user_data['log_file']
+        if os.path.isfile(log_file):
+            Thread(target=google_drive.upload_to_google_drive, args=(log_file, True)).start()
+        else:
+            print("log file %s not found" % (log_file,))
+
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         print(sys.argv[0], '<cookie filename>')
         sys.exit(0)
     arr = reload_cookies(sys.argv[1], [])
-    COOKIES = {}
+    USER_LIST = {}
     p = re.compile(r'DedeUserID=(\d+)')
+    time_of_day = datetime.now().strftime('%Y-%m-%d %H:%M')
     for cookie in arr:
         m = p.search(cookie)
-        uname = get_user_name(m.group(1))
-        COOKIES[uname] = cookie
-        print(uname, m.group(1), cookie)
+        uid = m.group(1)
+        uname = get_user_name(uid)
+        USER_LIST[uid] = {'uname': uname, 'cookie': cookie, 'log_file': LOG_DIR + '/' + time_of_day + '.txt'}
+        print(uname, uid, cookie)
 
     while True:
         try:
-            main()
+            main(USER_LIST)
         except KeyboardInterrupt:
             for task in asyncio.Task.all_tasks():
                 task.cancel()
