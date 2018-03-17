@@ -72,7 +72,7 @@ async def check_raffle(dic):
 
 def main():
     room_id = 1017
-    danmuji = comment_downloader(room_id, '/dev/null', check_raffle)
+    danmuji = comment_downloader(room_id, save_path='/dev/null', gift_path='/dev/null', listener_func=check_raffle)
     
     loop = asyncio.get_event_loop()
     loop.run_until_complete(danmuji.connectServer())
