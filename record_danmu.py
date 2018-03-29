@@ -4,7 +4,7 @@ from threading import Thread
 import sys
 import google_drive
 
-INTERVAL = 60
+INTERVAL = 60*60*24
 
 async def main(room_id):
     while True:
@@ -16,7 +16,7 @@ async def main(room_id):
         gift_path = path + '.txt'
         try:
             await asyncio.wait_for(download_comments(room_id, comment_path, gift_path), timeout=INTERVAL)
-        except asyncio.TimeoutError:
+        except:
             pass
         Thread(target=google_drive.upload_to_google_drive, args=(comment_path, True)).start()
         if os.path.isfile(gift_path):
