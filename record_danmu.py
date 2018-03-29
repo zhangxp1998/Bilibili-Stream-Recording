@@ -1,8 +1,11 @@
 import asyncio
-from comment_downloader import *
-from threading import Thread
+import os
 import sys
+from datetime import datetime
+from threading import Thread
+
 import google_drive
+from comment_downloader import download_comments
 
 INTERVAL = 60*60*24
 
