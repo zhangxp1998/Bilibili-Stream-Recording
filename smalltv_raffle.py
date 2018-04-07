@@ -15,9 +15,9 @@ from comment_downloader import comment_downloader
 from monitor_up import get_user_name
 
 APIs = [
-            'http://api.live.bilibili.com/gift/v2/smalltv/', 
-            'http://api.live.bilibili.com/activity/v1/Raffle/',
-            'http://api.live.bilibili.com/lottery/v1/Storm/']
+        'http://api.live.bilibili.com/gift/v2/smalltv/', 
+        'http://api.live.bilibili.com/activity/v1/Raffle/',
+        'http://api.live.bilibili.com/lottery/v1/Storm/']
 
 LOG_DIR = 'raffle-log'
 
@@ -41,8 +41,8 @@ async def check_raffle_result(headers, log_file, roomId, raffleId, time_left):
             if not os.path.exists(LOG_DIR):
                 os.mkdir(LOG_DIR)
             if(data['code'] >= 0):
-                # if data['data']['gift_name'] == '辣条':
-                #     return
+                if data['data']['gift_name'] == '辣条' or data['data']['gift_num'] <= 0:
+                    return
                 with open(log_file, 'a') as log_file:
                     print("%s x %d" % (data['data']['gift_name'], data['data']['gift_num']), file=log_file)
             else:
@@ -77,9 +77,9 @@ async def check_raffle(dic):
                         continue
                     raffleId = event['raffleId']
                     async with session.get(url % (roomid, raffleId)) as resp:
-                        data = await resp.json()
-                        print('%s Enter Raffle %s : %s' % (uname, raffleId, data['msg']))
-                        if(data['code'] >= 0):
+                        raffle_data = await resp.json()
+                        print('%s Enter Raffle %s : %s' % (uname, raffleId, raffle_data['msg']))
+                        if(raffle_data['code'] >= 0):
                             loop.create_task(check_raffle_result(HEADERS, log_file, roomid, raffleId, event['time']))
 
 
