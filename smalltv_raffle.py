@@ -97,10 +97,14 @@ async def check_raffle(dic):
 def main(USER_LIST):
     room_id = 1017
     danmuji = comment_downloader(room_id, save_path='/dev/null', gift_path='/dev/null', listener_func=check_raffle)
-    try:
-        loop.run_until_complete(asyncio.wait_for(asyncio.wait(tasks), 60*5))
-    except:
-        danmuji.close()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(danmuji.connectServer())
+    tasks = [
+        asyncio.Task(danmuji.ReceiveMessageLoop()),
+        asyncio.Task(danmuji.HeartbeatLoop())
+    ]
+    loop.run_until_complete(asyncio.wait(tasks))
+    danmuji.close()
     for user_data in USER_LIST.values():
         log_file = user_data['log_file']
         if os.path.isfile(log_file):
