@@ -72,6 +72,7 @@ async def check_raffle(dic):
             async def proc_event_list(data, url):
                 if data['code'] < 0:
                     return
+                await asyncio.sleep(2);
                 for event in data['data']:
                     if event.get('from_user') is None:
                         continue
