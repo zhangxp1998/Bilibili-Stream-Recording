@@ -119,7 +119,8 @@ async def download_stream(download_url, stream_save_location, HEADERS={}):
                 last_log = datetime.now()
                 last_size = ''
                 # buffer size 128K
-                async for buf in resp.content.iter_chunked(128 * 1024):
+                while True:
+                    buf = await asyncio.wait_for(resp.content.read(128*1024), timeout=8)
                     if not buf:
                         break
                     out_file.write(buf)
