@@ -15,8 +15,8 @@ from comment_downloader import comment_downloader
 from monitor_up import get_user_name
 
 APIs = [
-        'http://api.live.bilibili.com/gift/v2/smalltv/', 
-        'http://api.live.bilibili.com/activity/v1/Raffle/',
+        'http://api.live.bilibili.com/gift/v3/smalltv/', 
+        'http://api.live.bilibili.com/activity/v1/lottery/',
         'http://api.live.bilibili.com/lottery/v1/Storm/']
 
 LOG_DIR = 'raffle-log'
