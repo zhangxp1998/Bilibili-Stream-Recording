@@ -97,7 +97,7 @@ class comment_downloader():
         # room_id is the true room id obtained from
         # https://api.live.bilibili.com/room/v1/Room/room_init?id=
         HEADERS = {'Accept': '*/*','User-Agent': 'Safari/537.36','Accept-Encoding': 'gzip, deflate, br'}
-        with aiohttp.ClientSession(conn_timeout=3, read_timeout=3) as session:
+        async with aiohttp.ClientSession(conn_timeout=3, read_timeout=3) as session:
             async with session.get('http://live.bilibili.com/api/player?id=cid:' + str(self._roomId), headers=HEADERS) as resp:
                 text = await resp.text()
                 dom = xml.dom.minidom.parseString('<root>' + text + '</root>')
