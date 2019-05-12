@@ -109,5 +109,6 @@ def google_api_auth():
     return creds
 
 if __name__ == '__main__':
-    for video in sys.argv[1:]:
-        upload_to_google_drive(video)
+	google_api_auth()
+	for video in sys.argv[1:]:
+		upload_to_google_drive(video)
