@@ -11,6 +11,7 @@ from asyncio import Task
 from datetime import datetime
 from random import random
 from threading import Thread
+import codecs
 
 import aiohttp
 import async_timeout
@@ -167,8 +168,36 @@ def generate_save_path(stream_info):
         os.makedirs(uid)
     return uid + "/" + datetime.now().strftime('%b %d %Y %H:%M:%S')
 
+async def handle_egame(url, HEADERS):
+    uid = re.compile(r"(\d+)").search(url).group(1)
+
+    print("Downloading webpage...")
+    html = requests.get(url).text
+    print("Extracting URL...")
+    pattern = re.compile(r'playUrl:[\'\"]([^"\']*)[\"\'],desc:["\']蓝光8M["\']')
+    match = pattern.search(html)
+    url = ''
+    if match:
+        url = codecs.decode(match.group(1), "unicode_escape")
+    else:
+        pattern = re.compile(r'playUrl:[\'\"]([^"\']*)[\"\'],desc:["\'][^"\']*["\']')
+        url = codecs.decode(pattern.search(html).group(1), "unicode_escape")
+    if not os.path.exists(uid):
+        os.makedirs(uid)
+    print("EGame Download URL:", url)
+    save_path = uid + "/" + datetime.now().strftime('%b %d %Y %H:%M:%S')
+    video_path = save_path + '.flv'
+    await download_stream(url, video_path, HEADERS)
+    if os.path.getsize(video_path) == 0:
+        print("Empty stream, retry later.")
+        await asyncio.sleep(30)
+    else:
+        Thread(target=google_drive.upload_to_google_drive, args=(video_path, True)).start()
+
 
 async def main(url, HEADERS={}):
+    if "egame.qq.com" in url:
+        return await handle_egame(url, HEADERS)
     # Parse the users's UID
     space_id = extract_user_id(url)
     while True:

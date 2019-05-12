@@ -229,6 +229,6 @@ class comment_downloader():
             except:
                 pass
             return
-        else:
-            print(json.dumps(dic, indent=2, sort_keys=True, ensure_ascii=False))
+        # else:
+        #    print(json.dumps(dic, indent=2, sort_keys=True, ensure_ascii=False))
         return
