@@ -190,6 +190,7 @@ async def handle_egame(url, HEADERS):
     await download_stream(url, video_path, HEADERS)
     if os.path.getsize(video_path) == 0:
         print("Empty stream, retry later.")
+        os.remove(video_path)
         await asyncio.sleep(30)
     else:
         Thread(target=google_drive.upload_to_google_drive, args=(video_path, True)).start()
