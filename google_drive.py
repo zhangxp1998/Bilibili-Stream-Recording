@@ -7,15 +7,19 @@ Exampe:
 import os
 import re
 import sys
+import json
+import logging
+import functools
 
 from apiclient import discovery
 from googleapiclient.http import MediaFileUpload
-from httplib2 import Http
-from oauth2client import client, file, tools
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.oauth2.credentials import Credentials
 
 SCOPES = [
-    'https://www.googleapis.com/auth/drive.readonly.metadata',
+    'https://www.googleapis.com/auth/drive.metadata.readonly',
     'https://www.googleapis.com/auth/drive.file']
+
 
 def extract_components(file_path):
     '''
@@ -30,6 +34,7 @@ def extract_components(file_path):
     folder_name = matcher.group(1)
     file_name = matcher.group(2)
     return (folder_name, file_name)
+
 
 def get_folder_id(DRIVE, folder_name):
     '''
@@ -49,6 +54,7 @@ def get_folder_id(DRIVE, folder_name):
         }, fields='id').execute()
         return folder['id']
 
+
 def upload_to_google_drive(file_path, remove=False):
     """
         Upload file_path to Google Drive. Will automatically
@@ -59,13 +65,13 @@ def upload_to_google_drive(file_path, remove=False):
     """
     folder_name, file_name = extract_components(file_path)
     print(folder_name, file_name)
-    creds = google_api_auth()
-    DRIVE = discovery.build('drive', 'v3', http=creds.authorize(Http()))
-    #save the file to specific folder
+    creds: Credentials = google_api_auth()
+    DRIVE = discovery.build('drive', 'v3', credentials=creds)
+    # save the file to specific folder
     folder_id = get_folder_id(DRIVE, folder_name)
-    #buffer size 512K
+    # buffer size 512K
     media = MediaFileUpload(file_path, chunksize=512*1024, resumable=True)
-    #upload to the folder specified in file_path
+    # upload to the folder specified in file_path
     uploader = DRIVE.files().create(
         body={'name': file_name, 'parents': [folder_id]},
         media_body=media)
@@ -73,11 +79,12 @@ def upload_to_google_drive(file_path, remove=False):
     last_percent = 0
     while response is None:
         status, response = uploader.next_chunk()
-        #Print the progress if the percentage changed
+        # Print the progress if the percentage changed
         if status:
             percent = int(status.progress() * 100)
             if percent > last_percent:
-                print("%s uploaded %.2f%%" % (file_path, (status.progress() * 100)))
+                print("%s uploaded %.2f%%" %
+                      (file_path, (status.progress() * 100)))
                 last_percent = percent
     print('%s uploaded!' % (file_path,))
     if remove:
@@ -86,17 +93,28 @@ def upload_to_google_drive(file_path, remove=False):
     return response
 
 
+@functools.lru_cache()
 def google_api_auth():
     '''
     obtain authorization to use Google Drive's API
     '''
-    store = file.Storage('storage.json')
-    creds = store.get()
-    if not creds or creds.invalid:
-        flow = client.flow_from_clientsecrets('client_id.json', SCOPES)
-        creds = tools.run_flow(flow, store)
+    try:
+        with open('storage.json', 'r') as fp:
+            creds = json.load(fp)
+            return Credentials.from_authorized_user_info(creds)
+    except Exception as e:
+        logging.warning("Failed to load stored credential due to %s", e)
+
+    flow = InstalledAppFlow.from_client_secrets_file(
+        'client_id.json', scopes=SCOPES)
+    flow.run_console()
+    creds = flow.credentials
+    with open('storage.json', 'w') as fp:
+        fp.write(creds.to_json())
     return creds
 
+
 if __name__ == '__main__':
+    google_api_auth()
     for video in sys.argv[1:]:
         upload_to_google_drive(video)
