@@ -8,12 +8,10 @@ import sys
 import time
 from datetime import datetime
 from multiprocessing import Pool, Process
-from random import random
+import google_drive
 
 import requests
 
-import google_drive
-from comment_downloader import download_comments, write_xml_footer
 
 HEADERS = {
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -58,6 +56,7 @@ def get_stream_info(user_id):
     """
     resp = requests.get(
         'https://api.vc.bilibili.com/user_ex/v1/user/detail?uid=%s&room[]=live_status' % str(user_id), headers=HEADERS, timeout=5)
+
     data = resp.json()
     check_json_error(data)
     return data['data']
@@ -85,9 +84,17 @@ def get_stream_download_urls(stream_info):
     """
     global HEADERS
     room_id = stream_info['room']['room_id']
-    resp = requests.get(
-        'https://api.live.bilibili.com/room/v1/Room/playUrl?cid=%s&quality=4&platform=web' % str(room_id), headers=HEADERS, timeout=5)
-    return resp.json()
+    resp = requests.get('https://live.bilibili.com/' +
+                        str(room_id), headers=HEADERS)
+    if '__NEPTUNE_IS_MY_WAIFU__={' in resp.text:
+        data = resp.text[resp.text.index('__NEPTUNE_IS_MY_WAIFU__={'):]
+        data = data[len('__NEPTUNE_IS_MY_WAIFU__='):]
+        if '</script>' in data:
+            data = data[:data.index('</script>')]
+        data = json.loads(data)
+        codec = data['roomInitRes']['data']['playurl_info']['playurl']['stream'][0]['format'][0]['codec'][0]
+
+        return codec['url_info'][0]['host'] + codec['base_url'] + codec['url_info'][0]['extra']
 
 
 def sizeof_fmt(num, suffix='B'):
@@ -105,7 +112,7 @@ def sizeof_fmt(num, suffix='B'):
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
 
-def download_stream(download_url, stream_save_location):
+def download_stream(download_url, stream_save_location, stream_info):
     """
     Download the URL
     Args:
@@ -116,8 +123,10 @@ def download_stream(download_url, stream_save_location):
         LOG: logger
     """
     global HEADERS
+    headers = {**HEADERS, 'Referer': "https://live.bilibili.com/" +
+               str(stream_info["room"]["room_id"])}
     out_file = open(stream_save_location, 'wb')
-    resp = requests.get(download_url, stream=True, headers=HEADERS, timeout=5)
+    resp = requests.get(download_url, stream=True, headers=headers, timeout=5)
     file_len = 0
     last_log = datetime.now()
     last_size = ''
@@ -149,10 +158,10 @@ def get_user_name(uid):
     """
     global HEADERS
     resp = requests.get(
-        'https://api.live.bilibili.com/user/v1/User/get?uid=%s&platform=pc' % str(uid), headers=HEADERS, timeout=5)
+        'https://api.bilibili.com/x/space/acc/info?mid=%s' % str(uid), headers=HEADERS, timeout=5)
     data = resp.json()
     check_json_error(data)
-    return data['data']['uname']
+    return data['data']['name']
 
 
 def generate_save_path(stream_info):
@@ -192,11 +201,7 @@ def main():
         stream_info = get_stream_info(space_id)
         if is_user_streaming(stream_info):
             # obtain download url of this user's stream
-            all_download_urls = get_stream_download_urls(stream_info)
-            # randomly choose an URL
-            url_count = len(all_download_urls['data']['durl'])
-            default_url = all_download_urls['data']['durl'][int(
-                random() * url_count)]['url']
+            default_url = get_stream_download_urls(stream_info)
             print(default_url)
 
             # generate a unique save path for downloading files
@@ -206,18 +211,11 @@ def main():
             video_path = save_path + '.flv'
             p = Process(
                 name=video_path,
-                target=download_stream, args=(default_url, video_path))
+                target=download_stream, args=(default_url, video_path, stream_info))
             p.start()
             print('PID: %d NAME: %s' % (p.pid, p.name))
 
             # Download the comment stream asychronously
-            comment_path = save_path + '.xml'
-            comment_worker = Process(
-                name=comment_path,
-                target=download_comments, args=(stream_info['room']['room_id'], comment_path))
-            comment_worker.start()
-            print('PID: %d NAME: %s' %
-                  (comment_worker.pid, comment_worker.name))
 
             # save stream info and upload it
             meta_info_path = save_path + '.json'
@@ -230,18 +228,15 @@ def main():
             p.join()
 
             # if the stream ends, just kill the comment downloader
-            comment_worker.terminate()
-            comment_worker.join()
-            write_xml_footer(comment_path)
 
-            if os.path.getsize(video_path) == 0:
+            if not os.path.exists(video_path) or os.path.getsize(video_path) == 0:
                 os.remove(video_path)
-                os.remove(comment_path)
+                # os.remove(comment_path)
                 print('Failed to download stream')
                 continue
 
             # upload the video and comment file, then delete both files
-            async_upload_delete(comment_path, pool)
+            # async_upload_delete(comment_path, pool)
             async_upload_delete(video_path, pool)
         else:
             print("%s is not streaming..." % (get_user_name(space_id),))
@@ -255,5 +250,3 @@ if __name__ == '__main__':
             main()
         except KeyboardInterrupt:
             break
-        except:
-            pass
