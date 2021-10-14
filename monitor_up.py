@@ -9,8 +9,10 @@ import time
 from datetime import datetime
 from multiprocessing import Pool, Process
 import google_drive
-import random
+import urllib3
 import requests
+import socket
+from functools import lru_cache
 
 
 HEADERS = {
@@ -48,6 +50,34 @@ def check_json_error(data):
     raise Exception(data['msg'])
 
 
+def retry(times, exceptions):
+  """
+  Retry Decorator
+  Retries the wrapped function/method `times` times if the exceptions listed
+  in ``exceptions`` are thrown
+  :param times: The number of times to repeat the wrapped function/method
+  :type times: Int
+  :param Exceptions: Lists of exceptions that trigger a retry attempt
+  :type Exceptions: Tuple of Exceptions
+  """
+  def decorator(func):
+    def newfn(*args, **kwargs):
+      attempt = 0
+      while attempt < times:
+        try:
+          return func(*args, **kwargs)
+        except exceptions as e:
+          print(
+              'Exception {} thrown when attempting to run {}, attempt {} of {}' .format(
+                  e, func, attempt, times)
+          )
+          attempt += 1
+      return func(*args, **kwargs)
+    return newfn
+  return decorator
+
+
+@retry(3, [urllib3.exceptions.MaxRetryError, socket.gaierror, urllib3.exceptions.NewConnectionError, requests.exceptions.ConnectionError])
 def get_stream_info(user_id):
   """
   get uploader's streaming info
@@ -160,6 +190,7 @@ def download_stream(download_url, stream_save_location, stream_info):
     raise
 
 
+@lru_cache
 def get_user_name(uid):
   """
   Query the user's name from bilibili
@@ -210,7 +241,12 @@ def main():
   pool = Pool(processes=2)
   while True:
     # obtain streamming information about this user
-    stream_info = get_stream_info(space_id)
+    try:
+      stream_info = get_stream_info(space_id)
+    except requests.exceptions.RequestException:
+      logging.exception("Got exception when trying to get_stream_info")
+      time.sleep(5)
+      continue
     if is_user_streaming(stream_info):
       # obtain download url of this user's stream
       default_url = get_stream_download_urls(stream_info)
