@@ -77,7 +77,7 @@ def retry(times, exceptions):
   return decorator
 
 
-@retry(3, [urllib3.exceptions.MaxRetryError, socket.gaierror, urllib3.exceptions.NewConnectionError, requests.exceptions.ConnectionError])
+@retry(3, (urllib3.exceptions.MaxRetryError, socket.gaierror, urllib3.exceptions.NewConnectionError, requests.exceptions.ConnectionError))
 def get_stream_info(user_id):
   """
   get uploader's streaming info
